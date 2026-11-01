@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm -v)",
+      "Bash(npm create *)",
+      "Bash(node --check backend/src/index.js)",
+      "Bash(node --check backend/src/tournament.js)",
+      "Bash(node --check backend/src/tournamentStore.js)",
+      "Bash(node --check backend/src/tournamentClock.js)",
+      "Bash(node --check backend/src/auth.js)",
+      "Read(//tmp/**)",
+      "Bash(curl -s -o /dev/null -w \"health status: %{http_code}\\\\n\" https://twelve-cases-play.loca.lt/health)",
+      "Bash(curl -s -D - -o /dev/null -X OPTIONS https://twelve-cases-play.loca.lt/api/auth/login -H 'Origin: https://mean-forks-laugh.loca.lt' -H 'Access-Control-Request-Method: POST')",
+      "Bash(curl -v -s https://twelve-cases-play.loca.lt/health)",
+      "PowerShell(Get-CimInstance *)",
+      "Bash(curl -s -D - -o /dev/null -X OPTIONS http://localhost:4000/api/auth/login -H 'Origin: https://mean-forks-laugh.loca.lt' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: Content-Type')",
+      "Bash(curl *)",
+      "PowerShell(Stop-Process *)"
+    ]
+  }
+}
