@@ -2,8 +2,15 @@ import { OAuth2Client } from "google-auth-library";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const PRODUCTION_CALLBACK_URL = "https://poker-tournament-management.onrender.com/auth/google/callback";
+const DEV_CALLBACK_URL = `http://localhost:${process.env.PORT || 4000}/auth/google/callback`;
+
+// GOOGLE_CALLBACK_URL always wins when set explicitly. Otherwise, never fall
+// back to localhost in production — that silently breaks the OAuth redirect
+// on Render if the env var is ever missing.
 const GOOGLE_CALLBACK_URL =
-  process.env.GOOGLE_CALLBACK_URL || `http://localhost:${process.env.PORT || 4000}/auth/google/callback`;
+  process.env.GOOGLE_CALLBACK_URL ||
+  (process.env.NODE_ENV === "production" ? PRODUCTION_CALLBACK_URL : DEV_CALLBACK_URL);
 
 export const isGoogleAuthConfigured = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
 

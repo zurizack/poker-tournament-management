@@ -4,13 +4,22 @@ import { useTournamentSocket } from "../hooks/useTournamentSocket";
 
 export function PlayerView() {
   const { tournamentId } = useParams();
-  const { state, connected, error } = useTournamentSocket({ tournamentId });
+  const { state, connected, error, connectionIssue } = useTournamentSocket({ tournamentId });
 
   if (error) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-slate-950 px-4 text-center text-slate-100">
         <p className="text-xl font-semibold text-red-400">{error}</p>
         <p className="text-slate-500">Double-check the tournament ID and try again.</p>
+      </div>
+    );
+  }
+
+  if (connectionIssue && !connected) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-slate-950 px-4 text-center text-slate-100">
+        <p className="text-xl font-semibold text-amber-400">{connectionIssue}</p>
+        <p className="text-slate-500">This should recover automatically once the server responds.</p>
       </div>
     );
   }

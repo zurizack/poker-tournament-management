@@ -11,10 +11,13 @@ import { isGoogleAuthConfigured, getGoogleAuthUrl, getGoogleProfile } from "./go
 const PORT = process.env.PORT || 4000;
 
 // CLIENT_ORIGIN accepts a comma-separated list so the same server can serve
-// the frontend from several origins at once (localhost + the LAN IP).
+// the frontend from several origins at once (localhost + the LAN IP, or a
+// Vercel domain). Trailing slashes are stripped because a browser's Origin
+// header never includes one — a pasted-with-trailing-slash value would
+// otherwise silently fail every CORS check (REST and Socket.IO alike).
 const CLIENT_ORIGINS = (process.env.CLIENT_ORIGIN || "http://localhost:5173")
   .split(",")
-  .map((origin) => origin.trim())
+  .map((origin) => origin.trim().replace(/\/+$/, ""))
   .filter(Boolean);
 const CLIENT_ORIGIN = CLIENT_ORIGINS[0];
 

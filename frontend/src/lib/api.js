@@ -1,4 +1,7 @@
-export const SERVER_URL = import.meta.env.VITE_SERVER_URL || import.meta.env.VITE_API_URL || "http://localhost:4000";
+// Strip a trailing slash — a pasted-with-trailing-slash env var would
+// otherwise double up with the leading "/" on every request path below.
+const rawServerUrl = import.meta.env.VITE_SERVER_URL || import.meta.env.VITE_API_URL || "http://localhost:4000";
+export const SERVER_URL = rawServerUrl.replace(/\/+$/, "");
 
 async function request(path, { method = "GET", token, body } = {}) {
   const res = await fetch(`${SERVER_URL}${path}`, {
