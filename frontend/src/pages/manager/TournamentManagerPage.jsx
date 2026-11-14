@@ -1,18 +1,34 @@
-import { Link, useParams } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTournamentSocket } from "../../hooks/useTournamentSocket";
 import { ClockDisplay } from "../../components/ClockDisplay";
 import { ControlPanel } from "../../components/ControlPanel";
 import { StructureEditor } from "../../components/StructureEditor";
 import { PlayerManager } from "../../components/PlayerManager";
+import { api } from "../../lib/api";
 
 export function TournamentManagerPage() {
   const { tournamentId } = useParams();
   const { token } = useAuth();
+  const navigate = useNavigate();
+  const [ending, setEnding] = useState(false);
   const { state, connected, error, connectionIssue, sendManagerAction } = useTournamentSocket({
     tournamentId,
     token,
   });
+
+  async function handleEndTournament() {
+    if (!window.confirm("End this tournament? This can't be undone.")) return;
+    setEnding(true);
+    try {
+      await api.endTournament(token, tournamentId);
+      navigate("/manager");
+    } catch (err) {
+      setEnding(false);
+      window.alert(err.message);
+    }
+  }
 
   if (error) {
     return (
@@ -42,6 +58,17 @@ export function TournamentManagerPage() {
     );
   }
 
+  if (state.status === "ended") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-slate-950 px-4 text-center text-slate-100">
+        <p className="text-xl font-semibold text-slate-300">This tournament has ended.</p>
+        <Link to="/manager" className="text-slate-400 hover:text-slate-200">
+          ← Back to dashboard
+        </Link>
+      </div>
+    );
+  }
+
   const isRunning = state.clock.status === "running";
 
   return (
@@ -54,13 +81,23 @@ export function TournamentManagerPage() {
           <h1 className="font-mono text-2xl font-bold tracking-widest">{tournamentId}</h1>
           <p className="text-sm text-slate-400">Share this ID with players to join</p>
         </div>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-widest ${
-            connected ? "bg-emerald-900 text-emerald-300" : "bg-red-900 text-red-200"
-          }`}
-        >
-          {connected ? "Connected" : "Disconnected"}
-        </span>
+        <div className="flex items-center gap-3">
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-widest ${
+              connected ? "bg-emerald-900 text-emerald-300" : "bg-red-900 text-red-200"
+            }`}
+          >
+            {connected ? "Connected" : "Disconnected"}
+          </span>
+          <button
+            type="button"
+            disabled={ending}
+            onClick={handleEndTournament}
+            className="rounded-lg bg-red-900 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-red-200 hover:bg-red-800 disabled:opacity-50"
+          >
+            {ending ? "Ending..." : "End Tournament"}
+          </button>
+        </div>
       </div>
 
       <div className="mx-auto max-w-4xl px-3 py-4 sm:px-6 sm:py-6">

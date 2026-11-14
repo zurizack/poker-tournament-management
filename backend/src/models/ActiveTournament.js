@@ -37,6 +37,7 @@ const activeTournamentSchema = new mongoose.Schema(
     createdAt: { type: Number, required: true },
     startingStack: { type: Number, required: true },
     templateId: { type: mongoose.Schema.Types.ObjectId, ref: "TournamentTemplate", default: null },
+    status: { type: String, enum: ["active", "ended"], default: "active" },
     quickPlayerCounter: { type: Number, default: 0 },
     clock: { type: clockSchema, required: true },
     players: { type: [playerSchema], default: [] },

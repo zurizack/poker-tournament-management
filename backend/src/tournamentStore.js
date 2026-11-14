@@ -64,10 +64,16 @@ export function getTournament(id) {
   return tournaments.get(id);
 }
 
+// Ended tournaments are excluded here (dashboard list) and from
+// allTournaments() (tick loop) but stay in the Map and in Mongo — getTournament()
+// still finds them directly by PIN so a player with the link sees an
+// "ended" state instead of "not found", and the history isn't lost.
 export function listTournamentsByOwner(ownerUsername) {
-  return Array.from(tournaments.values()).filter((t) => t.ownerUsername === ownerUsername);
+  return Array.from(tournaments.values()).filter(
+    (t) => t.ownerUsername === ownerUsername && t.status !== "ended",
+  );
 }
 
 export function allTournaments() {
-  return tournaments.values();
+  return Array.from(tournaments.values()).filter((t) => t.status !== "ended");
 }

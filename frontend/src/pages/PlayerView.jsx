@@ -35,7 +35,13 @@ export function PlayerView() {
       </div>
 
       {state ? (
-        <ClockDisplay clockState={state.clock} totals={state.totals} />
+        state.status === "ended" ? (
+          <div className="flex flex-1 items-center justify-center text-center text-xl text-slate-300">
+            This tournament has ended — thanks for playing!
+          </div>
+        ) : (
+          <ClockDisplay clockState={state.clock} totals={state.totals} />
+        )
       ) : (
         <div className="flex flex-1 items-center justify-center text-xl text-slate-500">
           Loading tournament clock...

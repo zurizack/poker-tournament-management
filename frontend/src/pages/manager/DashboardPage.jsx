@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/api";
+import { TemplateManager } from "../../components/TemplateManager";
 
 export function DashboardPage() {
   const { token, username, logout } = useAuth();
@@ -31,6 +32,11 @@ export function DashboardPage() {
     }
   }
 
+  async function handleLaunchFromTemplate(templateId) {
+    const { tournamentId } = await api.createTournament(token, templateId);
+    navigate(`/manager/${tournamentId}`);
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
       <div className="mx-auto max-w-2xl">
@@ -48,6 +54,8 @@ export function DashboardPage() {
           </button>
         </div>
 
+        <TemplateManager token={token} onLaunch={handleLaunchFromTemplate} />
+
         <button
           type="button"
           onClick={handleCreate}
@@ -58,6 +66,8 @@ export function DashboardPage() {
         </button>
 
         {error && <p className="mb-4 text-center text-sm text-red-400">{error}</p>}
+
+        <h2 className="mb-3 text-lg font-semibold text-slate-100">Active Tournaments</h2>
 
         {loading ? (
           <p className="text-center text-slate-500">Loading tournaments...</p>

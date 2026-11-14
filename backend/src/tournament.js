@@ -12,6 +12,18 @@ export class Tournament {
     this._quickPlayerCounter = 0;
     this.startingStack = 1000;
     this.templateId = null;
+    this.status = "active";
+  }
+
+  // Terminal — once ended, requireOwnedTournament() in index.js rejects
+  // further manager actions and the tick loop/dashboard list stop
+  // considering this tournament. Pausing first keeps the persisted clock
+  // snapshot from looking like it's still counting down.
+  end() {
+    if (this.clock.status === "running") {
+      this.clock.pause();
+    }
+    this.status = "ended";
   }
 
   // Chips granted per buy-in/rebuy/add-on, used to estimate the average
@@ -106,6 +118,7 @@ export class Tournament {
 
     return {
       id: this.id,
+      status: this.status,
       clock: this.clock.getState(),
       players: this.players,
       totals: {
@@ -128,6 +141,7 @@ export class Tournament {
       createdAt: this.createdAt,
       startingStack: this.startingStack,
       templateId: this.templateId,
+      status: this.status,
       quickPlayerCounter: this._quickPlayerCounter,
       clock: this.clock.toPersistableState(),
       players: this.players.map((player) => ({ ...player })),
@@ -139,6 +153,7 @@ export class Tournament {
     tournament.createdAt = doc.createdAt;
     tournament.startingStack = doc.startingStack;
     tournament.templateId = doc.templateId ?? null;
+    tournament.status = doc.status ?? "active";
     tournament._quickPlayerCounter = doc.quickPlayerCounter ?? 0;
     tournament.players = doc.players.map((player) => ({ ...player }));
     tournament.clock = TournamentClock.fromPersistedState(doc.clock);

@@ -190,6 +190,25 @@ app.get("/api/tournaments", requireAuth, (req, res) => {
   res.json({ tournaments });
 });
 
+app.post("/api/tournaments/:id/end", requireAuth, async (req, res) => {
+  const tournament = getTournament(req.params.id);
+  if (!tournament || tournament.ownerUsername !== req.username) {
+    return res.status(404).json({ error: "Tournament not found" });
+  }
+  if (tournament.status === "ended") {
+    return res.status(409).json({ error: "Tournament already ended" });
+  }
+
+  tournament.end();
+  broadcastTournament(tournament);
+  try {
+    await persistTournament(tournament);
+  } catch (err) {
+    console.error(`[persist] end failed for tournament ${tournament.id}:`, err);
+  }
+  res.json({ ok: true });
+});
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: { origin: CLIENT_ORIGINS },
@@ -223,6 +242,9 @@ function requireOwnedTournament(socket, tournamentId) {
   }
   if (!socket.data.username || socket.data.username !== tournament.ownerUsername) {
     throw new Error("Unauthorized");
+  }
+  if (tournament.status === "ended") {
+    throw new Error("Tournament has ended");
   }
   return tournament;
 }

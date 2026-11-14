@@ -24,6 +24,16 @@ export const api = {
     request("/api/auth/signup", { method: "POST", body: { username, password } }),
   login: (username, password) =>
     request("/api/auth/login", { method: "POST", body: { username, password } }),
-  createTournament: (token) => request("/api/tournaments", { method: "POST", token }),
+  createTournament: (token, templateId) =>
+    request("/api/tournaments", { method: "POST", token, body: templateId ? { templateId } : undefined }),
   listTournaments: (token) => request("/api/tournaments", { token }),
+  endTournament: (token, tournamentId) =>
+    request(`/api/tournaments/${tournamentId}/end`, { method: "POST", token }),
+  createTemplate: (token, { name, levels, startingStack }) =>
+    request("/api/templates", { method: "POST", token, body: { name, levels, startingStack } }),
+  listTemplates: (token) => request("/api/templates", { token }),
+  updateTemplate: (token, templateId, updates) =>
+    request(`/api/templates/${templateId}`, { method: "PUT", token, body: updates }),
+  deleteTemplate: (token, templateId) =>
+    request(`/api/templates/${templateId}`, { method: "DELETE", token }),
 };
