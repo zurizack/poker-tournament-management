@@ -11,6 +11,7 @@ export class Tournament {
     this.players = [];
     this._quickPlayerCounter = 0;
     this.startingStack = 1000;
+    this.templateId = null;
   }
 
   // Chips granted per buy-in/rebuy/add-on, used to estimate the average
@@ -118,5 +119,29 @@ export class Tournament {
         averageStack: activePlayerCount > 0 ? Math.round(totalChips / activePlayerCount) : 0,
       },
     };
+  }
+
+  toPersistableState() {
+    return {
+      _id: this.id,
+      ownerUsername: this.ownerUsername,
+      createdAt: this.createdAt,
+      startingStack: this.startingStack,
+      templateId: this.templateId,
+      quickPlayerCounter: this._quickPlayerCounter,
+      clock: this.clock.toPersistableState(),
+      players: this.players.map((player) => ({ ...player })),
+    };
+  }
+
+  static fromPersistedState(doc) {
+    const tournament = new Tournament(doc._id, doc.ownerUsername);
+    tournament.createdAt = doc.createdAt;
+    tournament.startingStack = doc.startingStack;
+    tournament.templateId = doc.templateId ?? null;
+    tournament._quickPlayerCounter = doc.quickPlayerCounter ?? 0;
+    tournament.players = doc.players.map((player) => ({ ...player }));
+    tournament.clock = TournamentClock.fromPersistedState(doc.clock);
+    return tournament;
   }
 }

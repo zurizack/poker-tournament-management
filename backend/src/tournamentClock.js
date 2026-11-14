@@ -1,4 +1,4 @@
-import { defaultLevels } from "./levels.js";
+import { defaultLevels, cloneLevels, normalizeLevels } from "./levels.js";
 
 const STATUS = {
   IDLE: "idle",
@@ -67,18 +67,7 @@ export class TournamentClock {
     if (this.status === STATUS.RUNNING) {
       throw new Error("Pause the clock before editing the structure");
     }
-    if (!Array.isArray(levels) || levels.length === 0) {
-      throw new Error("Structure must contain at least one level");
-    }
-
-    this.levels = levels.map((raw, index) => ({
-      level: index + 1,
-      smallBlind: Math.max(0, Number(raw.smallBlind) || 0),
-      bigBlind: Math.max(0, Number(raw.bigBlind) || 0),
-      ante: Math.max(0, Number(raw.ante) || 0),
-      durationSeconds: Math.max(10, Number(raw.durationSeconds) || 60),
-      isBreak: Boolean(raw.isBreak),
-    }));
+    this.levels = normalizeLevels(levels);
     this.currentLevelIndex = Math.min(this.currentLevelIndex, this.levels.length - 1);
     this.remainingMs = this.currentLevel.durationSeconds * 1000;
     this.levelEndTimestamp = null;
@@ -104,13 +93,57 @@ export class TournamentClock {
     return Math.max(0, this.levelEndTimestamp - Date.now());
   }
 
-  // Called on a server-side interval. Returns true if the broadcastable state changed.
+  // Called on a server-side interval. `broadcast` is true every second while
+  // running (clients still need the recomputed countdown); `persist` is true
+  // only when a level actually advanced/expired — a real state mutation, not
+  // just the passage of time — so the caller only writes to Mongo then.
   tick() {
-    if (this.status !== STATUS.RUNNING) return false;
+    if (this.status !== STATUS.RUNNING) return { broadcast: false, persist: false };
+    let advanced = false;
     if (this.levelEndTimestamp - Date.now() <= 0) {
       this._advanceOnExpiry();
+      advanced = true;
     }
-    return true;
+    return { broadcast: true, persist: advanced };
+  }
+
+  // Replays expiry transitions after a cold rehydrate (server restart) so an
+  // absolute levelEndTimestamp observed far in the past catches up to "now" —
+  // the same effect as tick() having fired once per second the whole time
+  // the process was down. Idle/paused clocks skip the loop entirely since
+  // their remainingMs snapshot is already time-independent. Terminates
+  // because each iteration either advances currentLevelIndex (bounded by
+  // levels.length) or flips status to "paused" inside _advanceOnExpiry.
+  catchUp() {
+    let advanced = false;
+    while (
+      this.status === STATUS.RUNNING &&
+      this.levelEndTimestamp !== null &&
+      this.levelEndTimestamp - Date.now() <= 0
+    ) {
+      this._advanceOnExpiry();
+      advanced = true;
+    }
+    return advanced;
+  }
+
+  toPersistableState() {
+    return {
+      status: this.status,
+      currentLevelIndex: this.currentLevelIndex,
+      remainingMs: this.remainingMs,
+      levelEndTimestamp: this.levelEndTimestamp,
+      levels: cloneLevels(this.levels),
+    };
+  }
+
+  static fromPersistedState(state) {
+    const clock = new TournamentClock(cloneLevels(state.levels));
+    clock.currentLevelIndex = state.currentLevelIndex;
+    clock.status = state.status;
+    clock.remainingMs = state.remainingMs;
+    clock.levelEndTimestamp = state.levelEndTimestamp;
+    return clock;
   }
 
   getState() {

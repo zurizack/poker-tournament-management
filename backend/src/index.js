@@ -5,8 +5,18 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { hashPassword, verifyPassword, signToken, verifyToken, requireAuth } from "./auth.js";
 import { createUser, findUser, findUserByGoogleId } from "./userStore.js";
-import { createTournament, getTournament, listTournamentsByOwner, allTournaments } from "./tournamentStore.js";
+import {
+  createTournament,
+  getTournament,
+  listTournamentsByOwner,
+  allTournaments,
+  persistTournament,
+  loadActiveTournamentsFromDB,
+} from "./tournamentStore.js";
+import { createTemplate, listTemplatesByOwner, getTemplate, updateTemplate, deleteTemplate } from "./templateStore.js";
 import { isGoogleAuthConfigured, getGoogleAuthUrl, getGoogleProfile } from "./googleAuth.js";
+import { normalizeLevels } from "./levels.js";
+import { connectDB } from "./db.js";
 
 const PORT = process.env.PORT || 4000;
 
@@ -85,8 +95,88 @@ app.get("/auth/google/callback", async (req, res) => {
   }
 });
 
-app.post("/api/tournaments", requireAuth, (req, res) => {
-  const tournament = createTournament(req.username);
+app.post("/api/templates", requireAuth, async (req, res) => {
+  const { name, levels, startingStack } = req.body || {};
+  if (!name || !Array.isArray(levels) || levels.length === 0 || !startingStack) {
+    return res.status(400).json({ error: "name, levels, and startingStack are required" });
+  }
+
+  let normalizedLevels;
+  try {
+    normalizedLevels = normalizeLevels(levels);
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+
+  const template = await createTemplate(req.username, { name, levels: normalizedLevels, startingStack });
+  res.status(201).json({
+    templateId: template._id,
+    name: template.name,
+    levels: template.levels,
+    startingStack: template.startingStack,
+    createdAt: template.createdAt,
+  });
+});
+
+app.get("/api/templates", requireAuth, async (req, res) => {
+  const templates = await listTemplatesByOwner(req.username);
+  res.json({
+    templates: templates.map((t) => ({
+      templateId: t._id,
+      name: t.name,
+      levels: t.levels,
+      startingStack: t.startingStack,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+    })),
+  });
+});
+
+app.put("/api/templates/:id", requireAuth, async (req, res) => {
+  const { name, levels, startingStack } = req.body || {};
+  const updates = {};
+  if (name !== undefined) updates.name = name;
+  if (startingStack !== undefined) updates.startingStack = startingStack;
+  if (levels !== undefined) {
+    try {
+      updates.levels = normalizeLevels(levels);
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
+  const template = await updateTemplate(req.params.id, req.username, updates);
+  if (!template) {
+    return res.status(404).json({ error: "Template not found" });
+  }
+  res.json({
+    templateId: template._id,
+    name: template.name,
+    levels: template.levels,
+    startingStack: template.startingStack,
+  });
+});
+
+app.delete("/api/templates/:id", requireAuth, async (req, res) => {
+  const template = await deleteTemplate(req.params.id, req.username);
+  if (!template) {
+    return res.status(404).json({ error: "Template not found" });
+  }
+  res.status(204).end();
+});
+
+app.post("/api/tournaments", requireAuth, async (req, res) => {
+  const { templateId } = req.body || {};
+  let seed = {};
+  if (templateId) {
+    const template = await getTemplate(templateId, req.username);
+    if (!template) {
+      return res.status(404).json({ error: "Template not found" });
+    }
+    seed = { levels: template.levels, startingStack: template.startingStack, templateId: template._id };
+  }
+
+  const tournament = await createTournament(req.username, seed);
   res.status(201).json({ tournamentId: tournament.id });
 });
 
@@ -155,6 +245,11 @@ io.on("connection", (socket) => {
         mutate(tournament, payload);
         broadcastTournament(tournament);
         ack?.({ ok: true });
+        // Fire-and-forget: a Mongo hiccup must never stall the live clock or
+        // the ack the client already received (see tournamentStore.js).
+        persistTournament(tournament).catch((err) =>
+          console.error(`[persist] ${event} failed for tournament ${tournamentId}:`, err),
+        );
       } catch (error) {
         ack?.({ ok: false, error: error.message });
       }
@@ -182,14 +277,31 @@ io.on("connection", (socket) => {
 
 // Server-authoritative tick: advances expired levels and keeps every
 // connected client's countdown in sync, regardless of local clock drift.
+// Only persists to Mongo when a level actually advanced, not every second.
 setInterval(() => {
   for (const tournament of allTournaments()) {
-    if (tournament.clock.tick()) {
-      broadcastTournament(tournament);
+    const { broadcast, persist } = tournament.clock.tick();
+    if (broadcast) broadcastTournament(tournament);
+    if (persist) {
+      persistTournament(tournament).catch((err) =>
+        console.error(`[persist] tick advance failed for tournament ${tournament.id}:`, err),
+      );
     }
   }
 }, 1000);
 
-httpServer.listen(PORT, () => {
-  console.log(`Poker clock server listening on port ${PORT}`);
-});
+async function start() {
+  try {
+    await connectDB();
+    await loadActiveTournamentsFromDB();
+  } catch (err) {
+    console.error("[startup] Failed to initialize MongoDB:", err);
+    process.exit(1);
+  }
+
+  httpServer.listen(PORT, () => {
+    console.log(`Poker clock server listening on port ${PORT}`);
+  });
+}
+
+start();

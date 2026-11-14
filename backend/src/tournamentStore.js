@@ -1,7 +1,12 @@
 import { randomInt } from "crypto";
 import { Tournament } from "./tournament.js";
+import { ActiveTournament } from "./models/ActiveTournament.js";
 
-// In-memory tournament registry, keyed by a 6-digit PIN. Resets on restart.
+// In-memory tournament registry, keyed by a 6-digit PIN. This stays the
+// hot-path source of truth for the life of the process; Mongo is a durable
+// backing store that's rehydrated into this Map once at boot (see
+// loadActiveTournamentsFromDB) and kept in sync on every mutating action
+// (best-effort — see persistTournament's callers in index.js).
 const tournaments = new Map();
 
 function generatePin() {
@@ -12,11 +17,47 @@ function generatePin() {
   return pin;
 }
 
-export function createTournament(ownerUsername) {
+// Single upsert primitive reused by every write path (initial create,
+// manager actions, tick-driven level advances, post-rehydrate catch-up).
+export async function persistTournament(tournament) {
+  await ActiveTournament.findOneAndUpdate(
+    { _id: tournament.id },
+    { $set: tournament.toPersistableState() },
+    { upsert: true },
+  );
+}
+
+export async function createTournament(ownerUsername, seed = {}) {
   const id = generatePin();
   const tournament = new Tournament(id, ownerUsername);
+  if (seed.levels) tournament.clock.setLevels(seed.levels);
+  if (seed.startingStack) tournament.setStartingStack(seed.startingStack);
+  if (seed.templateId) tournament.templateId = seed.templateId;
+
   tournaments.set(id, tournament);
+  try {
+    await persistTournament(tournament);
+  } catch (err) {
+    console.error(`[persist] initial save failed for tournament ${id}:`, err);
+  }
   return tournament;
+}
+
+// Called once at boot, after connectDB() and before the server accepts
+// traffic, so generatePin()'s in-memory collision check is always correct
+// without an extra Mongo round-trip per PIN generation.
+export async function loadActiveTournamentsFromDB() {
+  const docs = await ActiveTournament.find({}).lean();
+  for (const doc of docs) {
+    const tournament = Tournament.fromPersistedState(doc);
+    if (tournament.clock.catchUp()) {
+      persistTournament(tournament).catch((err) =>
+        console.error(`[persist] catch-up save failed for tournament ${tournament.id}:`, err),
+      );
+    }
+    tournaments.set(tournament.id, tournament);
+  }
+  console.log(`[db] Rehydrated ${docs.length} active tournament(s)`);
 }
 
 export function getTournament(id) {

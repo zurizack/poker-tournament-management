@@ -20,3 +20,20 @@ export const defaultLevels = [
 export function cloneLevels(levels) {
   return levels.map((level) => ({ ...level }));
 }
+
+// Shared by TournamentClock.setLevels (live structure edits) and the
+// template routes (saving a blueprint), so both paths clamp/coerce raw
+// client JSON the same way before it's trusted.
+export function normalizeLevels(levels) {
+  if (!Array.isArray(levels) || levels.length === 0) {
+    throw new Error("Structure must contain at least one level");
+  }
+  return levels.map((raw, index) => ({
+    level: index + 1,
+    smallBlind: Math.max(0, Number(raw.smallBlind) || 0),
+    bigBlind: Math.max(0, Number(raw.bigBlind) || 0),
+    ante: Math.max(0, Number(raw.ante) || 0),
+    durationSeconds: Math.max(10, Number(raw.durationSeconds) || 60),
+    isBreak: Boolean(raw.isBreak),
+  }));
+}
