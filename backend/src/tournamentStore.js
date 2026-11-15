@@ -64,16 +64,26 @@ export function getTournament(id) {
   return tournaments.get(id);
 }
 
-// Ended tournaments are excluded here (dashboard list) and from
-// allTournaments() (tick loop) but stay in the Map and in Mongo — getTournament()
-// still finds them directly by PIN so a player with the link sees an
-// "ended" state instead of "not found", and the history isn't lost.
-// Includes tournaments the user owns AND tournaments they've been granted
-// admin access to, so a newly-added admin sees it on their own dashboard.
-export function listTournamentsForUser(username) {
-  return Array.from(tournaments.values()).filter(
-    (t) => t.isManagedBy(username) && t.status !== "ended",
-  );
+// Ended tournaments are excluded from all three queries below (dashboard
+// sections) and from allTournaments() (tick loop) but stay in the Map and in
+// Mongo — getTournament() still finds them directly by PIN so a player with
+// the link sees an "ended" state instead of "not found", and the history
+// isn't lost. Split into three focused queries (rather than one combined
+// list) so the dashboard can render distinct My/Pending/Managed sections.
+function notEnded(t) {
+  return t.status !== "ended";
+}
+
+export function listOwnedTournaments(username) {
+  return Array.from(tournaments.values()).filter((t) => t.ownerUsername === username && notEnded(t));
+}
+
+export function listPendingInvitations(username) {
+  return Array.from(tournaments.values()).filter((t) => t.pendingAdmins.includes(username) && notEnded(t));
+}
+
+export function listManagedTournaments(username) {
+  return Array.from(tournaments.values()).filter((t) => t.admins.includes(username) && notEnded(t));
 }
 
 export function allTournaments() {

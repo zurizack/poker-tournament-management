@@ -44,4 +44,8 @@ export const api = {
       method: "DELETE",
       token,
     }),
+  acceptInvitation: (token, tournamentId) =>
+    request(`/api/tournaments/${tournamentId}/invitations/accept`, { method: "POST", token }),
+  declineInvitation: (token, tournamentId) =>
+    request(`/api/tournaments/${tournamentId}/invitations/decline`, { method: "POST", token }),
 };

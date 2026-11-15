@@ -8,7 +8,9 @@ import { createUser, findUser, findUserByGoogleId, findUserByEmail } from "./use
 import {
   createTournament,
   getTournament,
-  listTournamentsForUser,
+  listOwnedTournaments,
+  listPendingInvitations,
+  listManagedTournaments,
   allTournaments,
   persistTournament,
   loadActiveTournamentsFromDB,
@@ -181,14 +183,27 @@ app.post("/api/tournaments", requireAuth, async (req, res) => {
 });
 
 app.get("/api/tournaments", requireAuth, (req, res) => {
-  const tournaments = listTournamentsForUser(req.username).map((t) => ({
+  const owned = listOwnedTournaments(req.username).map((t) => ({
     tournamentId: t.id,
     createdAt: t.createdAt,
     status: t.clock.getState().status,
     playerCount: t.players.length,
-    isOwner: t.ownerUsername === req.username,
   }));
-  res.json({ tournaments });
+  const managed = listManagedTournaments(req.username).map((t) => ({
+    tournamentId: t.id,
+    createdAt: t.createdAt,
+    status: t.clock.getState().status,
+    playerCount: t.players.length,
+    ownerUsername: t.ownerUsername,
+  }));
+  // Minimal on purpose — an un-accepted invitation shouldn't expose live
+  // player/clock data before the invitee has agreed to co-manage.
+  const pending = listPendingInvitations(req.username).map((t) => ({
+    tournamentId: t.id,
+    ownerUsername: t.ownerUsername,
+    createdAt: t.createdAt,
+  }));
+  res.json({ owned, managed, pending });
 });
 
 app.post("/api/tournaments/:id/end", requireAuth, async (req, res) => {
@@ -217,12 +232,11 @@ app.get("/api/tournaments/:id/admins", requireAuth, (req, res) => {
   if (!tournament || tournament.ownerUsername !== req.username) {
     return res.status(404).json({ error: "Tournament not found" });
   }
+  const resolve = (username) => ({ username, email: findUser(username)?.email || username });
   res.json({
     ownerUsername: tournament.ownerUsername,
-    admins: tournament.admins.map((username) => ({
-      username,
-      email: findUser(username)?.email || username,
-    })),
+    admins: tournament.admins.map(resolve),
+    pendingAdmins: tournament.pendingAdmins.map(resolve),
   });
 });
 
@@ -239,7 +253,7 @@ app.post("/api/tournaments/:id/admins", requireAuth, async (req, res) => {
   }
 
   try {
-    tournament.addAdmin(user.username);
+    tournament.inviteAdmin(user.username);
   } catch (error) {
     return res.status(400).json({ error: error.message });
   }
@@ -248,7 +262,7 @@ app.post("/api/tournaments/:id/admins", requireAuth, async (req, res) => {
   try {
     await persistTournament(tournament);
   } catch (err) {
-    console.error(`[persist] addAdmin failed for tournament ${tournament.id}:`, err);
+    console.error(`[persist] inviteAdmin failed for tournament ${tournament.id}:`, err);
   }
   res.json({ ok: true });
 });
@@ -265,6 +279,44 @@ app.delete("/api/tournaments/:id/admins/:username", requireAuth, async (req, res
     await persistTournament(tournament);
   } catch (err) {
     console.error(`[persist] removeAdmin failed for tournament ${tournament.id}:`, err);
+  }
+  res.json({ ok: true });
+});
+
+// Self-service — the invitee acts on their own invitation, no owner check.
+app.post("/api/tournaments/:id/invitations/accept", requireAuth, async (req, res) => {
+  const tournament = getTournament(req.params.id);
+  if (!tournament) {
+    return res.status(404).json({ error: "Tournament not found" });
+  }
+
+  try {
+    tournament.acceptInvitation(req.username);
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+
+  broadcastTournament(tournament);
+  try {
+    await persistTournament(tournament);
+  } catch (err) {
+    console.error(`[persist] acceptInvitation failed for tournament ${tournament.id}:`, err);
+  }
+  res.json({ ok: true });
+});
+
+app.post("/api/tournaments/:id/invitations/decline", requireAuth, async (req, res) => {
+  const tournament = getTournament(req.params.id);
+  if (!tournament) {
+    return res.status(404).json({ error: "Tournament not found" });
+  }
+
+  tournament.declineInvitation(req.username);
+  broadcastTournament(tournament);
+  try {
+    await persistTournament(tournament);
+  } catch (err) {
+    console.error(`[persist] declineInvitation failed for tournament ${tournament.id}:`, err);
   }
   res.json({ ok: true });
 });

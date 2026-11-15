@@ -14,28 +14,50 @@ export class Tournament {
     this.templateId = null;
     this.status = "active";
     this.admins = [];
+    this.pendingAdmins = [];
   }
 
   // Single permission check reused by every gameplay action and by end() —
-  // owner or any granted admin may manage the tournament.
+  // owner or any accepted admin may manage the tournament. A pending
+  // invitation grants no access until it's accepted.
   isManagedBy(username) {
     return username === this.ownerUsername || this.admins.includes(username);
   }
 
-  addAdmin(username) {
+  // Owner grants access by email; this starts an invitation rather than
+  // granting it outright — see acceptInvitation()/declineInvitation().
+  inviteAdmin(username) {
     if (username === this.ownerUsername) {
       throw new Error("Owner is already a manager");
     }
     if (this.admins.includes(username)) {
       throw new Error("Already an admin");
     }
+    if (this.pendingAdmins.includes(username)) {
+      throw new Error("Already invited");
+    }
+    this.pendingAdmins.push(username);
+  }
+
+  acceptInvitation(username) {
+    if (!this.pendingAdmins.includes(username)) {
+      throw new Error("No pending invitation");
+    }
+    this.pendingAdmins = this.pendingAdmins.filter((admin) => admin !== username);
     this.admins.push(username);
   }
 
-  // Idempotent — removing someone who isn't currently an admin is a no-op,
-  // not an error.
+  // Idempotent — declining a non-existent invitation is a no-op, not an error.
+  declineInvitation(username) {
+    this.pendingAdmins = this.pendingAdmins.filter((admin) => admin !== username);
+  }
+
+  // Owner-only revoke — covers both an already-accepted admin and a
+  // still-pending invitation, since from the owner's side "remove this
+  // person" means the same thing either way. Idempotent either way too.
   removeAdmin(username) {
     this.admins = this.admins.filter((admin) => admin !== username);
+    this.pendingAdmins = this.pendingAdmins.filter((admin) => admin !== username);
   }
 
   // Terminal — once ended, requireOwnedTournament() in index.js rejects
@@ -144,6 +166,7 @@ export class Tournament {
       status: this.status,
       ownerUsername: this.ownerUsername,
       admins: [...this.admins],
+      pendingAdmins: [...this.pendingAdmins],
       clock: this.clock.getState(),
       players: this.players,
       totals: {
@@ -168,6 +191,7 @@ export class Tournament {
       templateId: this.templateId,
       status: this.status,
       admins: [...this.admins],
+      pendingAdmins: [...this.pendingAdmins],
       quickPlayerCounter: this._quickPlayerCounter,
       clock: this.clock.toPersistableState(),
       players: this.players.map((player) => ({ ...player })),
@@ -181,6 +205,7 @@ export class Tournament {
     tournament.templateId = doc.templateId ?? null;
     tournament.status = doc.status ?? "active";
     tournament.admins = doc.admins ?? [];
+    tournament.pendingAdmins = doc.pendingAdmins ?? [];
     tournament._quickPlayerCounter = doc.quickPlayerCounter ?? 0;
     tournament.players = doc.players.map((player) => ({ ...player }));
     tournament.clock = TournamentClock.fromPersistedState(doc.clock);

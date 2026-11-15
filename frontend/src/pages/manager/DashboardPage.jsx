@@ -3,21 +3,65 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/api";
 import { TemplateManager } from "../../components/TemplateManager";
+import { PendingInvitations } from "../../components/PendingInvitations";
+
+function TournamentSection({ title, tournaments, emptyText, onOpen, showOwner }) {
+  return (
+    <div>
+      <h2 className="mb-3 text-lg font-semibold text-slate-100">{title}</h2>
+      {tournaments.length === 0 ? (
+        <p className="text-sm text-slate-500">{emptyText}</p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {tournaments.map((t) => (
+            <li key={t.tournamentId}>
+              <button
+                type="button"
+                onClick={() => onOpen(t.tournamentId)}
+                className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-900 px-5 py-4 text-left hover:border-emerald-600"
+              >
+                <div>
+                  <div className="font-mono text-lg font-semibold tracking-widest">{t.tournamentId}</div>
+                  <div className="text-sm text-slate-500">
+                    {t.playerCount} player{t.playerCount === 1 ? "" : "s"} · {t.status}
+                    {showOwner && <span className="ml-2 text-slate-600">· owned by {t.ownerUsername}</span>}
+                  </div>
+                </div>
+                <span className="text-slate-500">Manage →</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export function DashboardPage() {
   const { token, username, logout } = useAuth();
-  const [tournaments, setTournaments] = useState([]);
+  const [owned, setOwned] = useState([]);
+  const [managed, setManaged] = useState([]);
+  const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    api
+  function refresh() {
+    return api
       .listTournaments(token)
-      .then((data) => setTournaments(data.tournaments))
+      .then((data) => {
+        setOwned(data.owned);
+        setManaged(data.managed);
+        setPending(data.pending);
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   async function handleCreate() {
@@ -39,7 +83,7 @@ export function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-6xl">
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Manager Dashboard</h1>
@@ -54,50 +98,47 @@ export function DashboardPage() {
           </button>
         </div>
 
-        <TemplateManager token={token} onLaunch={handleLaunchFromTemplate} />
-
-        <button
-          type="button"
-          onClick={handleCreate}
-          disabled={creating}
-          className="mb-8 w-full rounded-lg bg-emerald-600 px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
-        >
-          {creating ? "Creating..." : "+ Create New Tournament"}
-        </button>
-
         {error && <p className="mb-4 text-center text-sm text-red-400">{error}</p>}
 
-        <h2 className="mb-3 text-lg font-semibold text-slate-100">Active Tournaments</h2>
-
         {loading ? (
-          <p className="text-center text-slate-500">Loading tournaments...</p>
-        ) : tournaments.length === 0 ? (
-          <p className="text-center text-slate-500">No tournaments yet. Create one to get started.</p>
+          <p className="text-center text-slate-500">Loading dashboard...</p>
         ) : (
-          <ul className="flex flex-col gap-3">
-            {tournaments.map((t) => (
-              <li key={t.tournamentId}>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/manager/${t.tournamentId}`)}
-                  className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-900 px-5 py-4 text-left hover:border-emerald-600"
-                >
-                  <div>
-                    <div className="font-mono text-lg font-semibold tracking-widest">{t.tournamentId}</div>
-                    <div className="text-sm text-slate-500">
-                      {t.playerCount} player{t.playerCount === 1 ? "" : "s"} · {t.status}
-                      {!t.isOwner && (
-                        <span className="ml-2 rounded-full bg-slate-800 px-2 py-0.5 text-xs uppercase tracking-wide text-slate-400">
-                          Admin
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-slate-500">Manage →</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+            <div className="flex flex-col gap-6">
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={creating}
+                className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
+              >
+                {creating ? "Creating..." : "+ Create New Tournament"}
+              </button>
+
+              <TemplateManager token={token} onLaunch={handleLaunchFromTemplate} />
+            </div>
+
+            <div className="flex flex-col gap-6">
+              {pending.length > 0 && (
+                <PendingInvitations token={token} invitations={pending} onResolved={refresh} />
+              )}
+
+              <TournamentSection
+                title="My Tournaments"
+                tournaments={owned}
+                emptyText="No tournaments yet. Create one to get started."
+                onOpen={(id) => navigate(`/manager/${id}`)}
+                showOwner={false}
+              />
+
+              <TournamentSection
+                title="Managed Tournaments"
+                tournaments={managed}
+                emptyText="You're not co-managing any tournaments yet."
+                onOpen={(id) => navigate(`/manager/${id}`)}
+                showOwner
+              />
+            </div>
+          </div>
         )}
       </div>
     </div>

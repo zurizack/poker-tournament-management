@@ -1,7 +1,22 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 
-// Owner-only panel for granting/revoking floor-manager access. Deliberately
+function AdminRow({ email, onRemove, removeLabel }) {
+  return (
+    <li className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-3 py-2">
+      <span className="text-sm text-slate-200">{email}</span>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="rounded-lg bg-slate-800 px-3 py-1 text-xs font-semibold text-red-400 hover:bg-slate-700"
+      >
+        {removeLabel}
+      </button>
+    </li>
+  );
+}
+
+// Owner-only panel for inviting/revoking floor-manager access. Deliberately
 // a plain fetch-on-open/after-mutation flow rather than socket-driven — this
 // is a low-frequency management action; the gameplay actions an admin takes
 // are what need to be live, and those already ride the existing
@@ -9,9 +24,11 @@ import { api } from "../lib/api";
 export function AdminManager({ token, tournamentId, onClose }) {
   const [ownerUsername, setOwnerUsername] = useState(null);
   const [admins, setAdmins] = useState([]);
+  const [pendingAdmins, setPendingAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [adding, setAdding] = useState(false);
+  const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
 
   function refresh() {
@@ -21,6 +38,7 @@ export function AdminManager({ token, tournamentId, onClose }) {
       .then((data) => {
         setOwnerUsername(data.ownerUsername);
         setAdmins(data.admins);
+        setPendingAdmins(data.pendingAdmins);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -34,9 +52,11 @@ export function AdminManager({ token, tournamentId, onClose }) {
   async function handleAdd() {
     setAdding(true);
     setError(null);
+    setMessage(null);
     try {
       await api.addAdmin(token, tournamentId, email);
       setEmail("");
+      setMessage("Invitation sent");
       await refresh();
     } catch (err) {
       setError(err.message);
@@ -47,6 +67,7 @@ export function AdminManager({ token, tournamentId, onClose }) {
 
   async function handleRemove(username) {
     setError(null);
+    setMessage(null);
     try {
       await api.removeAdmin(token, tournamentId, username);
       await refresh();
@@ -68,6 +89,7 @@ export function AdminManager({ token, tournamentId, onClose }) {
         <p className="mb-3 text-sm text-slate-500">Owner: {ownerUsername}</p>
 
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
+        {message && <p className="mb-3 text-sm text-emerald-400">{message}</p>}
 
         <div className="mb-4 flex gap-2">
           <input
@@ -83,32 +105,54 @@ export function AdminManager({ token, tournamentId, onClose }) {
             onClick={handleAdd}
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
           >
-            {adding ? "Adding..." : "Add"}
+            {adding ? "Inviting..." : "Invite"}
           </button>
         </div>
 
         {loading ? (
           <p className="text-sm text-slate-500">Loading...</p>
-        ) : admins.length === 0 ? (
-          <p className="text-sm text-slate-500">No floor managers yet.</p>
         ) : (
-          <ul className="flex flex-col gap-2">
-            {admins.map((admin) => (
-              <li
-                key={admin.username}
-                className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-3 py-2"
-              >
-                <span className="text-sm text-slate-200">{admin.email}</span>
-                <button
-                  type="button"
-                  onClick={() => handleRemove(admin.username)}
-                  className="rounded-lg bg-slate-800 px-3 py-1 text-xs font-semibold text-red-400 hover:bg-slate-700"
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
+          <div className="flex flex-col gap-4">
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-widest text-amber-400">
+                Pending ({pendingAdmins.length})
+              </h3>
+              {pendingAdmins.length === 0 ? (
+                <p className="text-sm text-slate-500">No pending invitations.</p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {pendingAdmins.map((admin) => (
+                    <AdminRow
+                      key={admin.username}
+                      email={admin.email}
+                      removeLabel="Cancel"
+                      onRemove={() => handleRemove(admin.username)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
+                Active ({admins.length})
+              </h3>
+              {admins.length === 0 ? (
+                <p className="text-sm text-slate-500">No floor managers yet.</p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {admins.map((admin) => (
+                    <AdminRow
+                      key={admin.username}
+                      email={admin.email}
+                      removeLabel="Remove"
+                      onRemove={() => handleRemove(admin.username)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>
