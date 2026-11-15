@@ -6,13 +6,15 @@ import { ClockDisplay } from "../../components/ClockDisplay";
 import { ControlPanel } from "../../components/ControlPanel";
 import { StructureEditor } from "../../components/StructureEditor";
 import { PlayerManager } from "../../components/PlayerManager";
+import { AdminManager } from "../../components/AdminManager";
 import { api } from "../../lib/api";
 
 export function TournamentManagerPage() {
   const { tournamentId } = useParams();
-  const { token } = useAuth();
+  const { token, username } = useAuth();
   const navigate = useNavigate();
   const [ending, setEnding] = useState(false);
+  const [showAdmins, setShowAdmins] = useState(false);
   const { state, connected, error, connectionIssue, sendManagerAction } = useTournamentSocket({
     tournamentId,
     token,
@@ -89,6 +91,15 @@ export function TournamentManagerPage() {
           >
             {connected ? "Connected" : "Disconnected"}
           </span>
+          {state.ownerUsername === username && (
+            <button
+              type="button"
+              onClick={() => setShowAdmins(true)}
+              className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-slate-200 hover:bg-slate-700"
+            >
+              Floor Managers
+            </button>
+          )}
           <button
             type="button"
             disabled={ending}
@@ -99,6 +110,10 @@ export function TournamentManagerPage() {
           </button>
         </div>
       </div>
+
+      {showAdmins && (
+        <AdminManager token={token} tournamentId={tournamentId} onClose={() => setShowAdmins(false)} />
+      )}
 
       <div className="mx-auto max-w-4xl px-3 py-4 sm:px-6 sm:py-6">
         <div className="mb-6 overflow-hidden rounded-xl border border-slate-800">

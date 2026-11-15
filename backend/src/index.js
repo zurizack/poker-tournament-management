@@ -4,11 +4,11 @@ import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { hashPassword, verifyPassword, signToken, verifyToken, requireAuth } from "./auth.js";
-import { createUser, findUser, findUserByGoogleId } from "./userStore.js";
+import { createUser, findUser, findUserByGoogleId, findUserByEmail } from "./userStore.js";
 import {
   createTournament,
   getTournament,
-  listTournamentsByOwner,
+  listTournamentsForUser,
   allTournaments,
   persistTournament,
   loadActiveTournamentsFromDB,
@@ -181,18 +181,19 @@ app.post("/api/tournaments", requireAuth, async (req, res) => {
 });
 
 app.get("/api/tournaments", requireAuth, (req, res) => {
-  const tournaments = listTournamentsByOwner(req.username).map((t) => ({
+  const tournaments = listTournamentsForUser(req.username).map((t) => ({
     tournamentId: t.id,
     createdAt: t.createdAt,
     status: t.clock.getState().status,
     playerCount: t.players.length,
+    isOwner: t.ownerUsername === req.username,
   }));
   res.json({ tournaments });
 });
 
 app.post("/api/tournaments/:id/end", requireAuth, async (req, res) => {
   const tournament = getTournament(req.params.id);
-  if (!tournament || tournament.ownerUsername !== req.username) {
+  if (!tournament || !tournament.isManagedBy(req.username)) {
     return res.status(404).json({ error: "Tournament not found" });
   }
   if (tournament.status === "ended") {
@@ -205,6 +206,65 @@ app.post("/api/tournaments/:id/end", requireAuth, async (req, res) => {
     await persistTournament(tournament);
   } catch (err) {
     console.error(`[persist] end failed for tournament ${tournament.id}:`, err);
+  }
+  res.json({ ok: true });
+});
+
+// Admin management is strictly owner-only — admins can run gameplay actions
+// (enforced via isManagedBy below) but can't grant/revoke access themselves.
+app.get("/api/tournaments/:id/admins", requireAuth, (req, res) => {
+  const tournament = getTournament(req.params.id);
+  if (!tournament || tournament.ownerUsername !== req.username) {
+    return res.status(404).json({ error: "Tournament not found" });
+  }
+  res.json({
+    ownerUsername: tournament.ownerUsername,
+    admins: tournament.admins.map((username) => ({
+      username,
+      email: findUser(username)?.email || username,
+    })),
+  });
+});
+
+app.post("/api/tournaments/:id/admins", requireAuth, async (req, res) => {
+  const tournament = getTournament(req.params.id);
+  if (!tournament || tournament.ownerUsername !== req.username) {
+    return res.status(404).json({ error: "Tournament not found" });
+  }
+
+  const { email } = req.body || {};
+  const user = findUserByEmail(email || "");
+  if (!user) {
+    return res.status(404).json({ error: "No registered user found with that email" });
+  }
+
+  try {
+    tournament.addAdmin(user.username);
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+
+  broadcastTournament(tournament);
+  try {
+    await persistTournament(tournament);
+  } catch (err) {
+    console.error(`[persist] addAdmin failed for tournament ${tournament.id}:`, err);
+  }
+  res.json({ ok: true });
+});
+
+app.delete("/api/tournaments/:id/admins/:username", requireAuth, async (req, res) => {
+  const tournament = getTournament(req.params.id);
+  if (!tournament || tournament.ownerUsername !== req.username) {
+    return res.status(404).json({ error: "Tournament not found" });
+  }
+
+  tournament.removeAdmin(req.params.username);
+  broadcastTournament(tournament);
+  try {
+    await persistTournament(tournament);
+  } catch (err) {
+    console.error(`[persist] removeAdmin failed for tournament ${tournament.id}:`, err);
   }
   res.json({ ok: true });
 });
@@ -240,7 +300,7 @@ function requireOwnedTournament(socket, tournamentId) {
   if (!tournament) {
     throw new Error("Tournament not found");
   }
-  if (!socket.data.username || socket.data.username !== tournament.ownerUsername) {
+  if (!socket.data.username || !tournament.isManagedBy(socket.data.username)) {
     throw new Error("Unauthorized");
   }
   if (tournament.status === "ended") {

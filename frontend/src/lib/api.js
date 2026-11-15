@@ -36,4 +36,12 @@ export const api = {
     request(`/api/templates/${templateId}`, { method: "PUT", token, body: updates }),
   deleteTemplate: (token, templateId) =>
     request(`/api/templates/${templateId}`, { method: "DELETE", token }),
+  listAdmins: (token, tournamentId) => request(`/api/tournaments/${tournamentId}/admins`, { token }),
+  addAdmin: (token, tournamentId, email) =>
+    request(`/api/tournaments/${tournamentId}/admins`, { method: "POST", token, body: { email } }),
+  removeAdmin: (token, tournamentId, username) =>
+    request(`/api/tournaments/${tournamentId}/admins/${encodeURIComponent(username)}`, {
+      method: "DELETE",
+      token,
+    }),
 };

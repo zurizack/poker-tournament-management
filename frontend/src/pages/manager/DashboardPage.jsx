@@ -86,6 +86,11 @@ export function DashboardPage() {
                     <div className="font-mono text-lg font-semibold tracking-widest">{t.tournamentId}</div>
                     <div className="text-sm text-slate-500">
                       {t.playerCount} player{t.playerCount === 1 ? "" : "s"} · {t.status}
+                      {!t.isOwner && (
+                        <span className="ml-2 rounded-full bg-slate-800 px-2 py-0.5 text-xs uppercase tracking-wide text-slate-400">
+                          Admin
+                        </span>
+                      )}
                     </div>
                   </div>
                   <span className="text-slate-500">Manage →</span>

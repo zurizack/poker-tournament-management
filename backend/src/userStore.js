@@ -17,3 +17,14 @@ export function findUser(username) {
 export function findUserByGoogleId(googleId) {
   return Array.from(users.values()).find((user) => user.googleId === googleId);
 }
+
+// Matches against either the user's email field or their username — Google
+// sign-in uses the email as the username, so this covers both that case and
+// any local account whose email field happens to be set.
+export function findUserByEmail(email) {
+  const normalized = (email || "").trim().toLowerCase();
+  if (!normalized) return undefined;
+  return Array.from(users.values()).find(
+    (user) => user.username.toLowerCase() === normalized || user.email?.toLowerCase() === normalized,
+  );
+}

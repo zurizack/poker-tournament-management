@@ -13,6 +13,29 @@ export class Tournament {
     this.startingStack = 1000;
     this.templateId = null;
     this.status = "active";
+    this.admins = [];
+  }
+
+  // Single permission check reused by every gameplay action and by end() —
+  // owner or any granted admin may manage the tournament.
+  isManagedBy(username) {
+    return username === this.ownerUsername || this.admins.includes(username);
+  }
+
+  addAdmin(username) {
+    if (username === this.ownerUsername) {
+      throw new Error("Owner is already a manager");
+    }
+    if (this.admins.includes(username)) {
+      throw new Error("Already an admin");
+    }
+    this.admins.push(username);
+  }
+
+  // Idempotent — removing someone who isn't currently an admin is a no-op,
+  // not an error.
+  removeAdmin(username) {
+    this.admins = this.admins.filter((admin) => admin !== username);
   }
 
   // Terminal — once ended, requireOwnedTournament() in index.js rejects
@@ -119,6 +142,8 @@ export class Tournament {
     return {
       id: this.id,
       status: this.status,
+      ownerUsername: this.ownerUsername,
+      admins: [...this.admins],
       clock: this.clock.getState(),
       players: this.players,
       totals: {
@@ -142,6 +167,7 @@ export class Tournament {
       startingStack: this.startingStack,
       templateId: this.templateId,
       status: this.status,
+      admins: [...this.admins],
       quickPlayerCounter: this._quickPlayerCounter,
       clock: this.clock.toPersistableState(),
       players: this.players.map((player) => ({ ...player })),
@@ -154,6 +180,7 @@ export class Tournament {
     tournament.startingStack = doc.startingStack;
     tournament.templateId = doc.templateId ?? null;
     tournament.status = doc.status ?? "active";
+    tournament.admins = doc.admins ?? [];
     tournament._quickPlayerCounter = doc.quickPlayerCounter ?? 0;
     tournament.players = doc.players.map((player) => ({ ...player }));
     tournament.clock = TournamentClock.fromPersistedState(doc.clock);
