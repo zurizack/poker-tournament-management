@@ -168,14 +168,48 @@ app.delete("/api/templates/:id", requireAuth, async (req, res) => {
 });
 
 app.post("/api/tournaments", requireAuth, async (req, res) => {
-  const { templateId } = req.body || {};
-  let seed = {};
+  const {
+    templateId,
+    name,
+    levels,
+    startingStack,
+    allowRebuys,
+    rebuyLimitType,
+    maxRebuysPerPlayer,
+    allowAddOn,
+  } = req.body || {};
+
+  const seed = {};
   if (templateId) {
+    // Traceability only — the Setup page sends its own (possibly edited)
+    // levels/startingStack in the body below, not re-fetched from the
+    // template, but we still confirm the manager actually owns it.
     const template = await getTemplate(templateId, req.username);
     if (!template) {
       return res.status(404).json({ error: "Template not found" });
     }
-    seed = { levels: template.levels, startingStack: template.startingStack, templateId: template._id };
+    seed.templateId = template._id;
+  }
+  if (levels !== undefined) {
+    try {
+      seed.levels = normalizeLevels(levels);
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+  if (startingStack !== undefined) seed.startingStack = startingStack;
+  if (name !== undefined) seed.name = name;
+  if (allowRebuys !== undefined) seed.allowRebuys = Boolean(allowRebuys);
+  if (allowAddOn !== undefined) seed.allowAddOn = Boolean(allowAddOn);
+  if (rebuyLimitType !== undefined) {
+    if (!["unlimited", "limited"].includes(rebuyLimitType)) {
+      return res.status(400).json({ error: "rebuyLimitType must be 'unlimited' or 'limited'" });
+    }
+    if (rebuyLimitType === "limited" && !(Number.isInteger(maxRebuysPerPlayer) && maxRebuysPerPlayer > 0)) {
+      return res.status(400).json({ error: "maxRebuysPerPlayer must be a positive integer when rebuys are limited" });
+    }
+    seed.rebuyLimitType = rebuyLimitType;
+    seed.maxRebuysPerPlayer = rebuyLimitType === "limited" ? maxRebuysPerPlayer : null;
   }
 
   const tournament = await createTournament(req.username, seed);

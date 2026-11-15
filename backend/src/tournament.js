@@ -15,6 +15,11 @@ export class Tournament {
     this.status = "active";
     this.admins = [];
     this.pendingAdmins = [];
+    this.name = "";
+    this.allowRebuys = true;
+    this.rebuyLimitType = "unlimited";
+    this.maxRebuysPerPlayer = null;
+    this.allowAddOn = true;
   }
 
   // Single permission check reused by every gameplay action and by end() —
@@ -135,14 +140,25 @@ export class Tournament {
   }
 
   recordRebuy(playerId) {
+    if (!this.allowRebuys) {
+      throw new Error("Rebuys are not allowed for this tournament");
+    }
+    if (this.rebuyLimitType === "limited" && this._findPlayer(playerId).rebuys >= this.maxRebuysPerPlayer) {
+      throw new Error("Rebuy limit reached");
+    }
     this._adjustCount(playerId, "rebuys", 1);
   }
 
+  // Always allowed, even past the limit — correcting a mistaken entry
+  // shouldn't be blocked by the same limit that stopped it going up.
   undoRebuy(playerId) {
     this._adjustCount(playerId, "rebuys", -1);
   }
 
   recordAddOn(playerId) {
+    if (!this.allowAddOn) {
+      throw new Error("Add-ons are not allowed for this tournament");
+    }
     this._adjustCount(playerId, "addOns", 1);
   }
 
@@ -163,10 +179,15 @@ export class Tournament {
 
     return {
       id: this.id,
+      name: this.name,
       status: this.status,
       ownerUsername: this.ownerUsername,
       admins: [...this.admins],
       pendingAdmins: [...this.pendingAdmins],
+      allowRebuys: this.allowRebuys,
+      rebuyLimitType: this.rebuyLimitType,
+      maxRebuysPerPlayer: this.maxRebuysPerPlayer,
+      allowAddOn: this.allowAddOn,
       clock: this.clock.getState(),
       players: this.players,
       totals: {
@@ -192,6 +213,11 @@ export class Tournament {
       status: this.status,
       admins: [...this.admins],
       pendingAdmins: [...this.pendingAdmins],
+      name: this.name,
+      allowRebuys: this.allowRebuys,
+      rebuyLimitType: this.rebuyLimitType,
+      maxRebuysPerPlayer: this.maxRebuysPerPlayer,
+      allowAddOn: this.allowAddOn,
       quickPlayerCounter: this._quickPlayerCounter,
       clock: this.clock.toPersistableState(),
       players: this.players.map((player) => ({ ...player })),
@@ -206,6 +232,11 @@ export class Tournament {
     tournament.status = doc.status ?? "active";
     tournament.admins = doc.admins ?? [];
     tournament.pendingAdmins = doc.pendingAdmins ?? [];
+    tournament.name = doc.name ?? "";
+    tournament.allowRebuys = doc.allowRebuys ?? true;
+    tournament.rebuyLimitType = doc.rebuyLimitType ?? "unlimited";
+    tournament.maxRebuysPerPlayer = doc.maxRebuysPerPlayer ?? null;
+    tournament.allowAddOn = doc.allowAddOn ?? true;
     tournament._quickPlayerCounter = doc.quickPlayerCounter ?? 0;
     tournament.players = doc.players.map((player) => ({ ...player }));
     tournament.clock = TournamentClock.fromPersistedState(doc.clock);

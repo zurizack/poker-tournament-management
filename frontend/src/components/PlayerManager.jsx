@@ -3,10 +3,13 @@ import { formatChips } from "../utils/format";
 
 // Mobile-first: 36px tap targets by default, shrinking down on sm+ where a
 // mouse pointer makes the extra size unnecessary.
-function Counter({ label, value, onIncrement, onDecrement }) {
+function Counter({ label, value, onIncrement, onDecrement, incrementDisabled, hint }) {
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-900 px-2 py-1 sm:w-auto sm:justify-start sm:gap-1.5 sm:bg-transparent sm:px-0 sm:py-0">
-      <span className="text-sm text-slate-400 sm:w-14 sm:text-xs sm:text-slate-500">{label}</span>
+      <span className="text-sm text-slate-400 sm:w-14 sm:text-xs sm:text-slate-500">
+        {label}
+        {hint && <span className="ml-1 text-slate-600">{hint}</span>}
+      </span>
       <div className="flex items-center gap-2 sm:gap-1.5">
         <button
           type="button"
@@ -20,7 +23,8 @@ function Counter({ label, value, onIncrement, onDecrement }) {
         <button
           type="button"
           onClick={onIncrement}
-          className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-base font-bold text-slate-300 hover:bg-slate-700 sm:h-7 sm:w-7 sm:rounded sm:text-sm"
+          disabled={incrementDisabled}
+          className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-base font-bold text-slate-300 hover:bg-slate-700 disabled:opacity-30 sm:h-7 sm:w-7 sm:rounded sm:text-sm"
         >
           +
         </button>
@@ -79,6 +83,10 @@ function StartingStackControl({ startingStack, onSetStartingStack }) {
 export function PlayerManager({
   players,
   startingStack,
+  allowRebuys,
+  rebuyLimitType,
+  maxRebuysPerPlayer,
+  allowAddOn,
   onSetStartingStack,
   onAddPlayer,
   onRemovePlayer,
@@ -201,18 +209,24 @@ export function PlayerManager({
                     onIncrement={() => onRecordBuyIn(player.id)}
                     onDecrement={() => onUndoBuyIn(player.id)}
                   />
-                  <Counter
-                    label="Rebuy"
-                    value={player.rebuys}
-                    onIncrement={() => onRecordRebuy(player.id)}
-                    onDecrement={() => onUndoRebuy(player.id)}
-                  />
-                  <Counter
-                    label="Add-on"
-                    value={player.addOns}
-                    onIncrement={() => onRecordAddOn(player.id)}
-                    onDecrement={() => onUndoAddOn(player.id)}
-                  />
+                  {allowRebuys && (
+                    <Counter
+                      label="Rebuy"
+                      value={player.rebuys}
+                      hint={rebuyLimitType === "limited" ? `/${maxRebuysPerPlayer}` : null}
+                      incrementDisabled={rebuyLimitType === "limited" && player.rebuys >= maxRebuysPerPlayer}
+                      onIncrement={() => onRecordRebuy(player.id)}
+                      onDecrement={() => onUndoRebuy(player.id)}
+                    />
+                  )}
+                  {allowAddOn && (
+                    <Counter
+                      label="Add-on"
+                      value={player.addOns}
+                      onIncrement={() => onRecordAddOn(player.id)}
+                      onDecrement={() => onUndoAddOn(player.id)}
+                    />
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:w-auto">

@@ -44,7 +44,6 @@ export function DashboardPage() {
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
 
   function refresh() {
@@ -64,21 +63,12 @@ export function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  async function handleCreate() {
-    setCreating(true);
-    setError(null);
-    try {
-      const { tournamentId } = await api.createTournament(token);
-      navigate(`/manager/${tournamentId}`);
-    } catch (err) {
-      setError(err.message);
-      setCreating(false);
-    }
+  function handleCreate() {
+    navigate("/manager/setup");
   }
 
-  async function handleLaunchFromTemplate(templateId) {
-    const { tournamentId } = await api.createTournament(token, templateId);
-    navigate(`/manager/${tournamentId}`);
+  function handleLaunchFromTemplate(templateId) {
+    navigate(`/manager/setup?templateId=${encodeURIComponent(templateId)}`);
   }
 
   return (
@@ -108,10 +98,9 @@ export function DashboardPage() {
               <button
                 type="button"
                 onClick={handleCreate}
-                disabled={creating}
-                className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
+                className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-emerald-500"
               >
-                {creating ? "Creating..." : "+ Create New Tournament"}
+                + Create New Tournament
               </button>
 
               <TemplateManager token={token} onLaunch={handleLaunchFromTemplate} />

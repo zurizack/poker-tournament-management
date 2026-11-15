@@ -20,9 +20,10 @@ function toLevelPayload(row) {
   };
 }
 
-// Shared row-editing table for a blind structure, used by both the live
-// StructureEditor (editing a running tournament's clock) and TemplateManager
-// (editing a saved blueprint) — same inputs, same add/remove behavior.
+// Shared row-editing table for a blind structure, used by both
+// TournamentSetupPage (configuring a tournament before launch) and
+// TemplateManager (editing a saved blueprint) — same inputs, same
+// add/remove behavior.
 export function LevelsEditor({ levels, disabled, onChange }) {
   const [rows, setRows] = useState(() => levels.map(toRow));
 

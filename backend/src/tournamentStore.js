@@ -33,6 +33,11 @@ export async function createTournament(ownerUsername, seed = {}) {
   if (seed.levels) tournament.clock.setLevels(seed.levels);
   if (seed.startingStack) tournament.setStartingStack(seed.startingStack);
   if (seed.templateId) tournament.templateId = seed.templateId;
+  if (seed.name !== undefined) tournament.name = seed.name;
+  if (seed.allowRebuys !== undefined) tournament.allowRebuys = seed.allowRebuys;
+  if (seed.rebuyLimitType !== undefined) tournament.rebuyLimitType = seed.rebuyLimitType;
+  if (seed.maxRebuysPerPlayer !== undefined) tournament.maxRebuysPerPlayer = seed.maxRebuysPerPlayer;
+  if (seed.allowAddOn !== undefined) tournament.allowAddOn = seed.allowAddOn;
 
   tournaments.set(id, tournament);
   try {

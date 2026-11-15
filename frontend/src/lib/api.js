@@ -24,8 +24,7 @@ export const api = {
     request("/api/auth/signup", { method: "POST", body: { username, password } }),
   login: (username, password) =>
     request("/api/auth/login", { method: "POST", body: { username, password } }),
-  createTournament: (token, templateId) =>
-    request("/api/tournaments", { method: "POST", token, body: templateId ? { templateId } : undefined }),
+  createTournament: (token, config) => request("/api/tournaments", { method: "POST", token, body: config }),
   listTournaments: (token) => request("/api/tournaments", { token }),
   endTournament: (token, tournamentId) =>
     request(`/api/tournaments/${tournamentId}/end`, { method: "POST", token }),

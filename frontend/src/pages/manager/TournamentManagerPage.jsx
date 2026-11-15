@@ -4,7 +4,6 @@ import { useAuth } from "../../context/AuthContext";
 import { useTournamentSocket } from "../../hooks/useTournamentSocket";
 import { ClockDisplay } from "../../components/ClockDisplay";
 import { ControlPanel } from "../../components/ControlPanel";
-import { StructureEditor } from "../../components/StructureEditor";
 import { PlayerManager } from "../../components/PlayerManager";
 import { AdminManager } from "../../components/AdminManager";
 import { api } from "../../lib/api";
@@ -71,8 +70,6 @@ export function TournamentManagerPage() {
     );
   }
 
-  const isRunning = state.clock.status === "running";
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-4 py-4 sm:px-6">
@@ -80,6 +77,7 @@ export function TournamentManagerPage() {
           <Link to="/manager" className="text-sm text-slate-500 hover:text-slate-300">
             ← Dashboard
           </Link>
+          {state.name && <p className="text-sm font-semibold text-slate-300">{state.name}</p>}
           <h1 className="font-mono text-2xl font-bold tracking-widest">{tournamentId}</h1>
           <p className="text-sm text-slate-400">Share this ID with players to join</p>
         </div>
@@ -129,15 +127,13 @@ export function TournamentManagerPage() {
         </div>
 
         <div className="flex flex-col gap-6">
-          <StructureEditor
-            levels={state.clock.levels}
-            disabled={isRunning}
-            onSave={(levels) => sendManagerAction("manager:updateStructure", { levels })}
-          />
-
           <PlayerManager
             players={state.players}
             startingStack={state.totals.startingStack}
+            allowRebuys={state.allowRebuys}
+            rebuyLimitType={state.rebuyLimitType}
+            maxRebuysPerPlayer={state.maxRebuysPerPlayer}
+            allowAddOn={state.allowAddOn}
             onSetStartingStack={(amount) => sendManagerAction("manager:setStartingStack", { amount })}
             onAddPlayer={(name) => sendManagerAction("manager:addPlayer", { name })}
             onRemovePlayer={(playerId) => sendManagerAction("manager:removePlayer", { playerId })}

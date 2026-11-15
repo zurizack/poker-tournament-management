@@ -4,6 +4,7 @@ import { PlayerView } from "./pages/PlayerView";
 import { ManagerLoginPage } from "./pages/manager/ManagerLoginPage";
 import { GoogleCallbackPage } from "./pages/manager/GoogleCallbackPage";
 import { DashboardPage } from "./pages/manager/DashboardPage";
+import { TournamentSetupPage } from "./pages/manager/TournamentSetupPage";
 import { TournamentManagerPage } from "./pages/manager/TournamentManagerPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
@@ -19,6 +20,14 @@ function App() {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manager/setup"
+        element={
+          <ProtectedRoute>
+            <TournamentSetupPage />
           </ProtectedRoute>
         }
       />
