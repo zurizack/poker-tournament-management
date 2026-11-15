@@ -63,15 +63,34 @@ export class TournamentClock {
 
   // Replaces the whole blind structure (used by the structure editor). Level
   // numbers are recomputed from array order rather than trusting the client.
+  // Safe to call while running or paused — never forces a pause/reset.
+  // Preserves elapsed time in the current level: editing its own duration
+  // shifts the remaining countdown by the same delta, while edits to other
+  // levels have no live effect until the clock reaches them. If the array
+  // shrank past the manager's position, that level is treated as fresh
+  // (never-started) since it's no longer "the same" level they were playing.
   setLevels(levels) {
-    if (this.status === STATUS.RUNNING) {
-      throw new Error("Pause the clock before editing the structure");
-    }
+    const previousIndex = this.currentLevelIndex;
+    const previousDurationMs = this.currentLevel.durationSeconds * 1000;
+    const elapsedMs = this.status === STATUS.IDLE ? 0 : previousDurationMs - this.getRemainingMs();
+    const wasRunning = this.status === STATUS.RUNNING;
+    const wasPaused = this.status === STATUS.PAUSED;
+
     this.levels = normalizeLevels(levels);
-    this.currentLevelIndex = Math.min(this.currentLevelIndex, this.levels.length - 1);
-    this.remainingMs = this.currentLevel.durationSeconds * 1000;
-    this.levelEndTimestamp = null;
-    this.status = STATUS.IDLE;
+    this.currentLevelIndex = Math.min(previousIndex, this.levels.length - 1);
+    const samePosition = this.currentLevelIndex === previousIndex;
+
+    const newDurationMs = this.currentLevel.durationSeconds * 1000;
+    const preservedElapsedMs = samePosition ? Math.min(elapsedMs, newDurationMs) : 0;
+    this.remainingMs = newDurationMs - preservedElapsedMs;
+
+    if (wasRunning) {
+      this.levelEndTimestamp = Date.now() + this.remainingMs;
+      this.status = STATUS.RUNNING;
+    } else {
+      this.levelEndTimestamp = null;
+      this.status = wasPaused ? STATUS.PAUSED : STATUS.IDLE;
+    }
   }
 
   // Advances to the next level automatically when the clock runs out while running.
