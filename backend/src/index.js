@@ -179,6 +179,10 @@ app.post("/api/tournaments", requireAuth, async (req, res) => {
     allowAddOn,
   } = req.body || {};
 
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: "Tournament name is required" });
+  }
+
   const seed = {};
   if (templateId) {
     // Traceability only — the Setup page sends its own (possibly edited)
@@ -198,7 +202,7 @@ app.post("/api/tournaments", requireAuth, async (req, res) => {
     }
   }
   if (startingStack !== undefined) seed.startingStack = startingStack;
-  if (name !== undefined) seed.name = name;
+  seed.name = name.trim();
   if (allowRebuys !== undefined) seed.allowRebuys = Boolean(allowRebuys);
   if (allowAddOn !== undefined) seed.allowAddOn = Boolean(allowAddOn);
   if (rebuyLimitType !== undefined) {
@@ -219,12 +223,14 @@ app.post("/api/tournaments", requireAuth, async (req, res) => {
 app.get("/api/tournaments", requireAuth, (req, res) => {
   const owned = listOwnedTournaments(req.username).map((t) => ({
     tournamentId: t.id,
+    name: t.name,
     createdAt: t.createdAt,
     status: t.clock.getState().status,
     playerCount: t.players.length,
   }));
   const managed = listManagedTournaments(req.username).map((t) => ({
     tournamentId: t.id,
+    name: t.name,
     createdAt: t.createdAt,
     status: t.clock.getState().status,
     playerCount: t.players.length,
@@ -234,6 +240,7 @@ app.get("/api/tournaments", requireAuth, (req, res) => {
   // player/clock data before the invitee has agreed to co-manage.
   const pending = listPendingInvitations(req.username).map((t) => ({
     tournamentId: t.id,
+    name: t.name,
     ownerUsername: t.ownerUsername,
     createdAt: t.createdAt,
   }));

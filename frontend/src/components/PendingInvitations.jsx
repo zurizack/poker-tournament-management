@@ -38,9 +38,8 @@ export function PendingInvitations({ token, invitations, onResolved }) {
             className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-800/40 bg-slate-950 px-4 py-3"
           >
             <div>
-              <div className="font-mono text-base font-semibold tracking-widest text-slate-100">
-                {inv.tournamentId}
-              </div>
+              <div className="text-base font-semibold text-slate-100">{inv.name || "Unnamed Tournament"}</div>
+              <div className="font-mono text-xs tracking-widest text-slate-500">{inv.tournamentId}</div>
               <div className="text-xs text-slate-500">Invited by {inv.ownerUsername}</div>
             </div>
             <div className="flex gap-2">

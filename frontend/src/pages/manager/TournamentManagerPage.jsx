@@ -222,8 +222,8 @@ export function TournamentManagerPage() {
           <Link to="/manager" className="text-sm text-slate-500 hover:text-slate-300">
             ← Dashboard
           </Link>
-          {state.name && <p className="text-sm font-semibold text-slate-300">{state.name}</p>}
-          <h1 className="font-mono text-2xl font-bold tracking-widest">{tournamentId}</h1>
+          <h1 className="text-2xl font-bold text-slate-100">{state.name || "Unnamed Tournament"}</h1>
+          <p className="font-mono text-sm tracking-widest text-slate-500">{tournamentId}</p>
           <p className="text-sm text-slate-400">Share this ID with players to join</p>
         </div>
         <span
