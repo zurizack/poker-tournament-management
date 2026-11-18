@@ -5,8 +5,21 @@ import { TournamentTemplate } from "./models/TournamentTemplate.js";
 // per-second path, so there's no in-memory cache here — every call talks to
 // Mongo directly. ownerUsername is baked into every filter (not checked
 // after a separate fetch) so ownership enforcement is atomic.
-export async function createTemplate(ownerUsername, { name, levels, startingStack }) {
-  return TournamentTemplate.create({ ownerUsername, name, levels, startingStack });
+export async function createTemplate(
+  ownerUsername,
+  { name, levels, startingStack, allowRebuys, rebuyLimitType, maxRebuysPerPlayer, allowAddOn, source },
+) {
+  return TournamentTemplate.create({
+    ownerUsername,
+    name,
+    levels,
+    startingStack,
+    allowRebuys,
+    rebuyLimitType,
+    maxRebuysPerPlayer,
+    allowAddOn,
+    source,
+  });
 }
 
 export async function listTemplatesByOwner(ownerUsername) {

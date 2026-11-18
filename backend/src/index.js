@@ -17,7 +17,7 @@ import {
 } from "./tournamentStore.js";
 import { createTemplate, listTemplatesByOwner, getTemplate, updateTemplate, deleteTemplate } from "./templateStore.js";
 import { isGoogleAuthConfigured, getGoogleAuthUrl, getGoogleProfile } from "./googleAuth.js";
-import { normalizeLevels } from "./levels.js";
+import { normalizeLevels, defaultLevels, cloneLevels } from "./levels.js";
 import { connectDB } from "./db.js";
 
 const PORT = process.env.PORT || 4000;
@@ -97,6 +97,42 @@ app.get("/auth/google/callback", async (req, res) => {
   }
 });
 
+// Shared by the template and tournament routes below — both accept the same
+// rebuy/add-on rule shape, so the validation only lives in one place.
+function parseRebuyRules(body) {
+  const { allowRebuys, rebuyLimitType, maxRebuysPerPlayer, allowAddOn } = body || {};
+  const rules = {};
+  if (allowRebuys !== undefined) rules.allowRebuys = Boolean(allowRebuys);
+  if (allowAddOn !== undefined) rules.allowAddOn = Boolean(allowAddOn);
+  if (rebuyLimitType !== undefined) {
+    if (!["unlimited", "limited"].includes(rebuyLimitType)) {
+      throw new Error("rebuyLimitType must be 'unlimited' or 'limited'");
+    }
+    if (rebuyLimitType === "limited" && !(Number.isInteger(maxRebuysPerPlayer) && maxRebuysPerPlayer > 0)) {
+      throw new Error("maxRebuysPerPlayer must be a positive integer when rebuys are limited");
+    }
+    rules.rebuyLimitType = rebuyLimitType;
+    rules.maxRebuysPerPlayer = rebuyLimitType === "limited" ? maxRebuysPerPlayer : null;
+  }
+  return rules;
+}
+
+function serializeTemplate(t) {
+  return {
+    templateId: t._id,
+    name: t.name,
+    levels: t.levels,
+    startingStack: t.startingStack,
+    allowRebuys: t.allowRebuys,
+    rebuyLimitType: t.rebuyLimitType,
+    maxRebuysPerPlayer: t.maxRebuysPerPlayer,
+    allowAddOn: t.allowAddOn,
+    source: t.source,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+  };
+}
+
 app.post("/api/templates", requireAuth, async (req, res) => {
   const { name, levels, startingStack } = req.body || {};
   if (!name || !Array.isArray(levels) || levels.length === 0 || !startingStack) {
@@ -104,34 +140,27 @@ app.post("/api/templates", requireAuth, async (req, res) => {
   }
 
   let normalizedLevels;
+  let rebuyRules;
   try {
     normalizedLevels = normalizeLevels(levels);
+    rebuyRules = parseRebuyRules(req.body);
   } catch (error) {
     return res.status(400).json({ error: error.message });
   }
 
-  const template = await createTemplate(req.username, { name, levels: normalizedLevels, startingStack });
-  res.status(201).json({
-    templateId: template._id,
-    name: template.name,
-    levels: template.levels,
-    startingStack: template.startingStack,
-    createdAt: template.createdAt,
+  const template = await createTemplate(req.username, {
+    name,
+    levels: normalizedLevels,
+    startingStack,
+    ...rebuyRules,
+    source: "manual",
   });
+  res.status(201).json(serializeTemplate(template));
 });
 
 app.get("/api/templates", requireAuth, async (req, res) => {
   const templates = await listTemplatesByOwner(req.username);
-  res.json({
-    templates: templates.map((t) => ({
-      templateId: t._id,
-      name: t.name,
-      levels: t.levels,
-      startingStack: t.startingStack,
-      createdAt: t.createdAt,
-      updatedAt: t.updatedAt,
-    })),
-  });
+  res.json({ templates: templates.map(serializeTemplate) });
 });
 
 app.put("/api/templates/:id", requireAuth, async (req, res) => {
@@ -146,17 +175,17 @@ app.put("/api/templates/:id", requireAuth, async (req, res) => {
       return res.status(400).json({ error: error.message });
     }
   }
+  try {
+    Object.assign(updates, parseRebuyRules(req.body));
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
 
   const template = await updateTemplate(req.params.id, req.username, updates);
   if (!template) {
     return res.status(404).json({ error: "Template not found" });
   }
-  res.json({
-    templateId: template._id,
-    name: template.name,
-    levels: template.levels,
-    startingStack: template.startingStack,
-  });
+  res.json(serializeTemplate(template));
 });
 
 app.delete("/api/templates/:id", requireAuth, async (req, res) => {
@@ -168,31 +197,17 @@ app.delete("/api/templates/:id", requireAuth, async (req, res) => {
 });
 
 app.post("/api/tournaments", requireAuth, async (req, res) => {
-  const {
-    templateId,
-    name,
-    levels,
-    startingStack,
-    allowRebuys,
-    rebuyLimitType,
-    maxRebuysPerPlayer,
-    allowAddOn,
-  } = req.body || {};
+  const { templateId, name, levels, startingStack } = req.body || {};
 
   if (!name || !name.trim()) {
     return res.status(400).json({ error: "Tournament name is required" });
   }
 
-  const seed = {};
-  if (templateId) {
-    // Traceability only — the Setup page sends its own (possibly edited)
-    // levels/startingStack in the body below, not re-fetched from the
-    // template, but we still confirm the manager actually owns it.
-    const template = await getTemplate(templateId, req.username);
-    if (!template) {
-      return res.status(404).json({ error: "Template not found" });
-    }
-    seed.templateId = template._id;
+  const seed = { name: name.trim() };
+  try {
+    Object.assign(seed, parseRebuyRules(req.body));
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
   }
   if (levels !== undefined) {
     try {
@@ -202,22 +217,36 @@ app.post("/api/tournaments", requireAuth, async (req, res) => {
     }
   }
   if (startingStack !== undefined) seed.startingStack = startingStack;
-  seed.name = name.trim();
-  if (allowRebuys !== undefined) seed.allowRebuys = Boolean(allowRebuys);
-  if (allowAddOn !== undefined) seed.allowAddOn = Boolean(allowAddOn);
-  if (rebuyLimitType !== undefined) {
-    if (!["unlimited", "limited"].includes(rebuyLimitType)) {
-      return res.status(400).json({ error: "rebuyLimitType must be 'unlimited' or 'limited'" });
+
+  if (templateId) {
+    // Traceability only — the Setup page sends its own (possibly edited)
+    // levels/startingStack/rebuy rules in the body above, not re-fetched
+    // from the template. Launching never mutates the template itself; that
+    // only happens through the explicit "Save as Template" action, so an
+    // edited-then-launched config doesn't silently overwrite the original.
+    const template = await getTemplate(templateId, req.username);
+    if (!template) {
+      return res.status(404).json({ error: "Template not found" });
     }
-    if (rebuyLimitType === "limited" && !(Number.isInteger(maxRebuysPerPlayer) && maxRebuysPerPlayer > 0)) {
-      return res.status(400).json({ error: "maxRebuysPerPlayer must be a positive integer when rebuys are limited" });
-    }
-    seed.rebuyLimitType = rebuyLimitType;
-    seed.maxRebuysPerPlayer = rebuyLimitType === "limited" ? maxRebuysPerPlayer : null;
+    seed.templateId = template._id;
+  } else {
+    // Quick Launch: there's nowhere else this configuration is saved, so
+    // auto-save it as a template (tagged quick_launch) before launching.
+    const autoTemplate = await createTemplate(req.username, {
+      name: seed.name || `Quick Launch - ${new Date().toLocaleString()}`,
+      levels: seed.levels || cloneLevels(defaultLevels),
+      startingStack: seed.startingStack ?? 1000,
+      allowRebuys: seed.allowRebuys ?? true,
+      rebuyLimitType: seed.rebuyLimitType ?? "unlimited",
+      maxRebuysPerPlayer: seed.maxRebuysPerPlayer ?? null,
+      allowAddOn: seed.allowAddOn ?? true,
+      source: "quick_launch",
+    });
+    seed.templateId = autoTemplate._id;
   }
 
   const tournament = await createTournament(req.username, seed);
-  res.status(201).json({ tournamentId: tournament.id });
+  res.status(201).json({ tournamentId: tournament.id, templateId: String(seed.templateId) });
 });
 
 app.get("/api/tournaments", requireAuth, (req, res) => {

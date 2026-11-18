@@ -68,7 +68,7 @@ export function DashboardPage() {
     navigate("/manager/setup");
   }
 
-  function handleLaunchFromTemplate(templateId) {
+  function handleOpenTemplate(templateId) {
     navigate(`/manager/setup?templateId=${encodeURIComponent(templateId)}`);
   }
 
@@ -104,7 +104,7 @@ export function DashboardPage() {
                 + Create New Tournament
               </button>
 
-              <TemplateManager token={token} onLaunch={handleLaunchFromTemplate} />
+              <TemplateManager token={token} onOpen={handleOpenTemplate} />
             </div>
 
             <div className="flex flex-col gap-6">

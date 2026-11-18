@@ -28,8 +28,7 @@ export const api = {
   listTournaments: (token) => request("/api/tournaments", { token }),
   endTournament: (token, tournamentId) =>
     request(`/api/tournaments/${tournamentId}/end`, { method: "POST", token }),
-  createTemplate: (token, { name, levels, startingStack }) =>
-    request("/api/templates", { method: "POST", token, body: { name, levels, startingStack } }),
+  createTemplate: (token, payload) => request("/api/templates", { method: "POST", token, body: payload }),
   listTemplates: (token) => request("/api/templates", { token }),
   updateTemplate: (token, templateId, updates) =>
     request(`/api/templates/${templateId}`, { method: "PUT", token, body: updates }),
