@@ -159,10 +159,19 @@ export function TournamentManagerPage() {
   const navigate = useNavigate();
   const [ending, setEnding] = useState(false);
   const [activeTab, setActiveTab] = useState("clock");
+  const [historyId, setHistoryId] = useState(null);
   const { state, connected, error, connectionIssue, sendManagerAction } = useTournamentSocket({
     tournamentId,
     token,
   });
+
+  useEffect(() => {
+    if (state?.status !== "ended") return;
+    api
+      .listHistory(token, { tournamentId })
+      .then((data) => setHistoryId(data.history[0]?.historyId ?? null))
+      .catch(() => setHistoryId(null));
+  }, [state?.status, tournamentId, token]);
 
   async function handleEndTournament() {
     if (!window.confirm("End this tournament? This can't be undone.")) return;
@@ -206,8 +215,16 @@ export function TournamentManagerPage() {
 
   if (state.status === "ended") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-slate-950 px-4 text-center text-slate-100">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-950 px-4 text-center text-slate-100">
         <p className="text-xl font-semibold text-slate-300">This tournament has ended.</p>
+        {historyId && (
+          <Link
+            to={`/manager/history/${historyId}`}
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
+          >
+            View History Report →
+          </Link>
+        )}
         <Link to="/manager" className="text-slate-400 hover:text-slate-200">
           ← Back to dashboard
         </Link>

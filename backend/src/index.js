@@ -16,6 +16,7 @@ import {
   loadActiveTournamentsFromDB,
 } from "./tournamentStore.js";
 import { createTemplate, listTemplatesByOwner, getTemplate, updateTemplate, deleteTemplate } from "./templateStore.js";
+import { createHistory, listHistoryForUser, getHistoryById } from "./historyStore.js";
 import { isGoogleAuthConfigured, getGoogleAuthUrl, getGoogleProfile } from "./googleAuth.js";
 import { normalizeLevels, defaultLevels, cloneLevels } from "./levels.js";
 import { connectDB } from "./db.js";
@@ -292,7 +293,65 @@ app.post("/api/tournaments/:id/end", requireAuth, async (req, res) => {
   } catch (err) {
     console.error(`[persist] end failed for tournament ${tournament.id}:`, err);
   }
+  try {
+    await createHistory(tournament);
+  } catch (err) {
+    console.error(`[history] snapshot failed for tournament ${tournament.id}:`, err);
+  }
   res.json({ ok: true });
+});
+
+app.get("/api/history", requireAuth, async (req, res) => {
+  const { tournamentId } = req.query;
+  const history = await listHistoryForUser(req.username, { tournamentId });
+  res.json({
+    history: history.map((h) => ({
+      historyId: h._id,
+      tournamentId: h.tournamentId,
+      name: h.name,
+      ownerUsername: h.ownerUsername,
+      startedAt: h.startedAt,
+      endedAt: h.endedAt,
+      grossDurationMs: h.grossDurationMs,
+      activeDurationMs: h.activeDurationMs,
+      uniquePlayers: h.uniquePlayers,
+      totalEntries: h.totalEntries,
+      finalLevelIndex: h.finalLevelIndex,
+      finalLevel: h.finalLevel,
+    })),
+  });
+});
+
+app.get("/api/history/:id", requireAuth, async (req, res) => {
+  const history = await getHistoryById(req.params.id, req.username);
+  if (!history) {
+    return res.status(404).json({ error: "History entry not found" });
+  }
+  res.json({
+    historyId: history._id,
+    tournamentId: history.tournamentId,
+    ownerUsername: history.ownerUsername,
+    admins: history.admins,
+    name: history.name,
+    startingStack: history.startingStack,
+    levels: history.levels,
+    allowRebuys: history.allowRebuys,
+    rebuyLimitType: history.rebuyLimitType,
+    maxRebuysPerPlayer: history.maxRebuysPerPlayer,
+    allowAddOn: history.allowAddOn,
+    startedAt: history.startedAt,
+    endedAt: history.endedAt,
+    grossDurationMs: history.grossDurationMs,
+    activeDurationMs: history.activeDurationMs,
+    totalEntries: history.totalEntries,
+    uniquePlayers: history.uniquePlayers,
+    totalRebuys: history.totalRebuys,
+    totalAddOns: history.totalAddOns,
+    finalLevelIndex: history.finalLevelIndex,
+    finalLevel: history.finalLevel,
+    players: history.players,
+    events: history.events,
+  });
 });
 
 // Admin management is strictly owner-only — admins can run gameplay actions
@@ -460,11 +519,11 @@ io.on("connection", (socket) => {
     });
   }
 
-  onManagerAction("manager:start", (t) => t.clock.start());
-  onManagerAction("manager:pause", (t) => t.clock.pause());
-  onManagerAction("manager:reset", (t) => t.clock.reset());
-  onManagerAction("manager:skipLevel", (t) => t.clock.skipLevel());
-  onManagerAction("manager:previousLevel", (t) => t.clock.previousLevel());
+  onManagerAction("manager:start", (t) => t.start());
+  onManagerAction("manager:pause", (t) => t.pause());
+  onManagerAction("manager:reset", (t) => t.reset());
+  onManagerAction("manager:skipLevel", (t) => t.skipLevel());
+  onManagerAction("manager:previousLevel", (t) => t.previousLevel());
   onManagerAction("manager:updateStructure", (t, { levels }) => t.updateStructure(levels));
   onManagerAction("manager:addPlayer", (t, { name }) => t.addPlayer(name));
   onManagerAction("manager:removePlayer", (t, { playerId }) => t.removePlayer(playerId));

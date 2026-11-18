@@ -27,6 +27,23 @@ const clockSchema = new mongoose.Schema(
   { _id: false },
 );
 
+// Generic shape — different event types populate different optional fields
+// (see Tournament#_logEvent). Kept loose rather than a discriminated union
+// since this is write-once-per-event and read back verbatim into history.
+const eventSchema = new mongoose.Schema(
+  {
+    type: { type: String, required: true },
+    timestamp: { type: Number, required: true },
+    fromLevelIndex: Number,
+    toLevelIndex: Number,
+    previousLevelCount: Number,
+    newLevelCount: Number,
+    previousValue: Number,
+    newValue: Number,
+  },
+  { _id: false },
+);
+
 // _id is the 6-digit PIN itself (not an ObjectId) — it's already the public
 // identifier used in socket room names and frontend routes, so this avoids a
 // separate PIN<->ObjectId mapping.
@@ -48,6 +65,8 @@ const activeTournamentSchema = new mongoose.Schema(
     quickPlayerCounter: { type: Number, default: 0 },
     clock: { type: clockSchema, required: true },
     players: { type: [playerSchema], default: [] },
+    events: { type: [eventSchema], default: [] },
+    startedAt: { type: Number, default: null },
   },
   { timestamps: false },
 );

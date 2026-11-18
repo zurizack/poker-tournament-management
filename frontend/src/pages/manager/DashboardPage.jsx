@@ -80,13 +80,22 @@ export function DashboardPage() {
             <h1 className="text-2xl font-bold">Manager Dashboard</h1>
             <p className="text-sm text-slate-400">Signed in as {username}</p>
           </div>
-          <button
-            type="button"
-            onClick={logout}
-            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700"
-          >
-            Log out
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/manager/history")}
+              className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700"
+            >
+              History
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700"
+            >
+              Log out
+            </button>
+          </div>
         </div>
 
         {error && <p className="mb-4 text-center text-sm text-red-400">{error}</p>}

@@ -6,6 +6,8 @@ import { GoogleCallbackPage } from "./pages/manager/GoogleCallbackPage";
 import { DashboardPage } from "./pages/manager/DashboardPage";
 import { TournamentSetupPage } from "./pages/manager/TournamentSetupPage";
 import { TournamentManagerPage } from "./pages/manager/TournamentManagerPage";
+import { HistoryPage } from "./pages/manager/HistoryPage";
+import { HistoryDetailPage } from "./pages/manager/HistoryDetailPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 function App() {
@@ -28,6 +30,22 @@ function App() {
         element={
           <ProtectedRoute>
             <TournamentSetupPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manager/history"
+        element={
+          <ProtectedRoute>
+            <HistoryPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manager/history/:historyId"
+        element={
+          <ProtectedRoute>
+            <HistoryDetailPage />
           </ProtectedRoute>
         }
       />

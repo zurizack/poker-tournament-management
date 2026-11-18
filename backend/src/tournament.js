@@ -20,6 +20,47 @@ export class Tournament {
     this.rebuyLimitType = "unlimited";
     this.maxRebuysPerPlayer = null;
     this.allowAddOn = true;
+    // Runtime audit trail — clock/admin interventions only (buy-ins/rebuys
+    // are already captured in each player's totals, so logging them here
+    // too would just duplicate that data as timeline noise). Archived
+    // verbatim into TournamentHistory when the tournament ends.
+    this.events = [];
+    this.startedAt = null;
+  }
+
+  _logEvent(type, data = {}) {
+    this.events.push({ type, timestamp: Date.now(), ...data });
+  }
+
+  // Clock control wrappers — index.js calls these instead of this.clock.*
+  // directly so every intervention lands in the audit trail in one place.
+  start() {
+    const wasPaused = this.clock.status === "paused";
+    this.clock.start();
+    if (!this.startedAt) this.startedAt = Date.now();
+    this._logEvent(wasPaused ? "resumed" : "started");
+  }
+
+  pause() {
+    this.clock.pause();
+    this._logEvent("paused");
+  }
+
+  reset() {
+    this.clock.reset();
+    this._logEvent("reset");
+  }
+
+  skipLevel() {
+    const fromLevelIndex = this.clock.currentLevelIndex;
+    this.clock.skipLevel();
+    this._logEvent("level_skipped", { fromLevelIndex, toLevelIndex: this.clock.currentLevelIndex });
+  }
+
+  previousLevel() {
+    const fromLevelIndex = this.clock.currentLevelIndex;
+    this.clock.previousLevel();
+    this._logEvent("level_reversed", { fromLevelIndex, toLevelIndex: this.clock.currentLevelIndex });
   }
 
   // Single permission check reused by every gameplay action and by end() —
@@ -74,6 +115,7 @@ export class Tournament {
       this.clock.pause();
     }
     this.status = "ended";
+    this._logEvent("tournament_ended");
   }
 
   // Chips granted per buy-in/rebuy/add-on, used to estimate the average
@@ -84,7 +126,11 @@ export class Tournament {
     if (!Number.isFinite(value) || value <= 0) {
       throw new Error("Starting stack must be a positive number");
     }
+    const previousValue = this.startingStack;
     this.startingStack = Math.round(value);
+    if (this.startingStack !== previousValue) {
+      this._logEvent("starting_stack_updated", { previousValue, newValue: this.startingStack });
+    }
   }
 
   // Name is optional so a manager can seat a player with a single click
@@ -167,7 +213,9 @@ export class Tournament {
   }
 
   updateStructure(levels) {
+    const previousLevelCount = this.clock.levels.length;
     this.clock.setLevels(levels);
+    this._logEvent("structure_updated", { previousLevelCount, newLevelCount: this.clock.levels.length });
   }
 
   getState() {
@@ -221,6 +269,8 @@ export class Tournament {
       quickPlayerCounter: this._quickPlayerCounter,
       clock: this.clock.toPersistableState(),
       players: this.players.map((player) => ({ ...player })),
+      events: this.events.map((event) => ({ ...event })),
+      startedAt: this.startedAt,
     };
   }
 
@@ -240,6 +290,8 @@ export class Tournament {
     tournament._quickPlayerCounter = doc.quickPlayerCounter ?? 0;
     tournament.players = doc.players.map((player) => ({ ...player }));
     tournament.clock = TournamentClock.fromPersistedState(doc.clock);
+    tournament.events = (doc.events ?? []).map((event) => ({ ...event }));
+    tournament.startedAt = doc.startedAt ?? null;
     return tournament;
   }
 }

@@ -46,4 +46,7 @@ export const api = {
     request(`/api/tournaments/${tournamentId}/invitations/accept`, { method: "POST", token }),
   declineInvitation: (token, tournamentId) =>
     request(`/api/tournaments/${tournamentId}/invitations/decline`, { method: "POST", token }),
+  listHistory: (token, { tournamentId } = {}) =>
+    request(`/api/history${tournamentId ? `?tournamentId=${encodeURIComponent(tournamentId)}` : ""}`, { token }),
+  getHistory: (token, historyId) => request(`/api/history/${historyId}`, { token }),
 };

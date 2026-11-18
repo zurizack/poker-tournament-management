@@ -8,3 +8,23 @@ export function formatClock(ms) {
 export function formatChips(amount) {
   return amount.toLocaleString("en-US");
 }
+
+// Human-readable elapsed time for a tournament's lifetime (hours/minutes),
+// as opposed to formatClock's mm:ss countdown for a single level. Falls
+// back to seconds under a minute so a brief pause doesn't just read "0m".
+export function formatDuration(ms) {
+  if (ms < 60000) return `${Math.round(ms / 1000)}s`;
+  const totalMinutes = Math.round(ms / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes}m`;
+  return `${hours}h ${minutes}m`;
+}
+
+export function formatDateTime(epochMs) {
+  if (!epochMs) return "—";
+  return new Date(epochMs).toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
