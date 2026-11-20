@@ -9,7 +9,7 @@ import { LevelsEditor } from "../../components/LevelsEditor";
 const STARTER_LEVELS = [{ smallBlind: 25, bigBlind: 50, ante: 0, durationSeconds: 900, isBreak: false }];
 
 export function TournamentSetupPage() {
-  const { token } = useAuth();
+  const { token, username } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // Captured once — the template this form was opened from. `templateId`
@@ -26,6 +26,10 @@ export function TournamentSetupPage() {
   const [allowAddOn, setAllowAddOn] = useState(true);
 
   const [templateId, setTemplateId] = useState(initialTemplateId);
+  // Who owns the currently-loaded template — null until it's fetched (or
+  // for a from-scratch form, where it stays null until the first save).
+  // Used to tell "mine" from a shared/floor template, below.
+  const [templateOwner, setTemplateOwner] = useState(null);
   const [loadingTemplate, setLoadingTemplate] = useState(Boolean(initialTemplateId));
   const [error, setError] = useState(null);
   const [statusMessage, setStatusMessage] = useState(null);
@@ -49,6 +53,7 @@ export function TournamentSetupPage() {
         setRebuyLimitType(template.rebuyLimitType);
         setMaxRebuysPerPlayer(template.maxRebuysPerPlayer ?? 2);
         setAllowAddOn(template.allowAddOn);
+        setTemplateOwner(template.ownerUsername);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoadingTemplate(false));
@@ -78,6 +83,11 @@ export function TournamentSetupPage() {
     };
   }
 
+  // Owner-only edits in place; a template shared by another manager (via
+  // template admins — see backend templateStore.js) always saves as a new
+  // copy under the current user instead, since they can't overwrite it.
+  const isSharedTemplate = Boolean(templateId) && templateOwner !== null && templateOwner !== username;
+
   async function handleSaveTemplate() {
     setError(null);
     setStatusMessage(null);
@@ -85,13 +95,15 @@ export function TournamentSetupPage() {
 
     setSavingTemplate(true);
     try {
-      if (templateId) {
+      if (templateId && !isSharedTemplate) {
         await api.updateTemplate(token, templateId, buildConfig());
+        setStatusMessage("Template saved.");
       } else {
         const created = await api.createTemplate(token, buildConfig());
         setTemplateId(created.templateId);
+        setTemplateOwner(created.ownerUsername);
+        setStatusMessage(isSharedTemplate ? "Saved as a new template of your own." : "Template saved.");
       }
-      setStatusMessage("Template saved.");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -134,9 +146,15 @@ export function TournamentSetupPage() {
         <Link to="/manager" className="text-sm text-slate-500 hover:text-slate-300">
           ← Dashboard
         </Link>
-        <h1 className="mb-6 mt-2 text-2xl font-bold">
+        <h1 className="mb-2 mt-2 text-2xl font-bold">
           {initialTemplateId ? "Edit & Launch Tournament" : "Set Up Tournament"}
         </h1>
+        {isSharedTemplate && (
+          <p className="mb-4 text-sm text-sky-400">
+            Shared template (owned by {templateOwner}) — saving will create your own copy rather than editing theirs.
+          </p>
+        )}
+        <div className="mb-4" />
 
         {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
 
@@ -243,7 +261,7 @@ export function TournamentSetupPage() {
             onClick={handleSaveTemplate}
             className="flex-1 rounded-lg bg-slate-800 px-4 py-3 text-base font-semibold text-slate-100 hover:bg-slate-700 disabled:opacity-50"
           >
-            {savingTemplate ? "Saving..." : templateId ? "Update Template" : "Save as Template"}
+            {savingTemplate ? "Saving..." : templateId && !isSharedTemplate ? "Update Template" : "Save as Template"}
           </button>
           <button
             type="button"

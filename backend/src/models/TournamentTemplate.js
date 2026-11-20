@@ -8,6 +8,10 @@ import { levelSchema } from "./levelSchema.js";
 const templateSchema = new mongoose.Schema(
   {
     ownerUsername: { type: String, required: true, index: true },
+    // Granted to a floor admin the moment they accept a co-admin invite on
+    // a tournament launched from this template (see acceptInvitation in
+    // index.js) — read access only; editing/deleting stays owner-only.
+    admins: { type: [String], default: [] },
     name: { type: String, required: true, trim: true },
     levels: { type: [levelSchema], required: true },
     startingStack: { type: Number, required: true },

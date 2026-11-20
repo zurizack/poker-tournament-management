@@ -49,4 +49,15 @@ export const api = {
   listHistory: (token, { tournamentId } = {}) =>
     request(`/api/history${tournamentId ? `?tournamentId=${encodeURIComponent(tournamentId)}` : ""}`, { token }),
   getHistory: (token, historyId) => request(`/api/history/${historyId}`, { token }),
+  listPlayers: (token, { search, sort } = {}) => {
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (sort) params.set("sort", sort);
+    const qs = params.toString();
+    return request(`/api/players${qs ? `?${qs}` : ""}`, { token });
+  },
+  createPlayer: (token, payload) => request("/api/players", { method: "POST", token, body: payload }),
+  updatePlayer: (token, playerId, updates) =>
+    request(`/api/players/${playerId}`, { method: "PATCH", token, body: updates }),
+  deletePlayer: (token, playerId) => request(`/api/players/${playerId}`, { method: "DELETE", token }),
 };

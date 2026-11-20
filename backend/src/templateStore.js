@@ -22,16 +22,33 @@ export async function createTemplate(
   });
 }
 
-export async function listTemplatesByOwner(ownerUsername) {
-  return TournamentTemplate.find({ ownerUsername }).sort({ createdAt: -1 }).lean();
+// Read access (list + single lookup) is shared with floor admins, same
+// access rule as tournaments/history. Writes (update/delete below) stay
+// owner-only so a floor admin can view and launch from a shared template
+// but can't mutate or remove someone else's.
+export async function listTemplatesForUser(username) {
+  return TournamentTemplate.find({ $or: [{ ownerUsername: username }, { admins: username }] })
+    .sort({ createdAt: -1 })
+    .lean();
 }
 
-export async function getTemplate(id, ownerUsername) {
+export async function getTemplate(id, username) {
   try {
-    return await TournamentTemplate.findOne({ _id: id, ownerUsername }).lean();
+    return await TournamentTemplate.findOne({
+      _id: id,
+      $or: [{ ownerUsername: username }, { admins: username }],
+    }).lean();
   } catch {
     return null; // malformed ObjectId -> treat as not-found, not a 500
   }
+}
+
+// Fire-and-forget from acceptInvitation — adds the accepting admin to the
+// template's admins so they also see/launch it going forward. Not revoked
+// if they're later removed from the tournament (see templateStore's header
+// comment on TournamentTemplate.admins).
+export async function addTemplateAdmin(id, username) {
+  await TournamentTemplate.findByIdAndUpdate(id, { $addToSet: { admins: username } });
 }
 
 export async function updateTemplate(id, ownerUsername, updates) {

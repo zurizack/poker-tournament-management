@@ -15,8 +15,24 @@ import {
   persistTournament,
   loadActiveTournamentsFromDB,
 } from "./tournamentStore.js";
-import { createTemplate, listTemplatesByOwner, getTemplate, updateTemplate, deleteTemplate } from "./templateStore.js";
+import {
+  createTemplate,
+  listTemplatesForUser,
+  getTemplate,
+  updateTemplate,
+  deleteTemplate,
+  addTemplateAdmin,
+} from "./templateStore.js";
 import { createHistory, listHistoryForUser, getHistoryById } from "./historyStore.js";
+import {
+  createPlayer,
+  listPlayersByOwner,
+  updatePlayer,
+  deletePlayer,
+  upsertPlayerSeen,
+  recomputePlayerStatsForOwner,
+  backfillPlayerStatsFromHistory,
+} from "./playerStore.js";
 import { isGoogleAuthConfigured, getGoogleAuthUrl, getGoogleProfile } from "./googleAuth.js";
 import { normalizeLevels, defaultLevels, cloneLevels } from "./levels.js";
 import { connectDB } from "./db.js";
@@ -121,6 +137,8 @@ function parseRebuyRules(body) {
 function serializeTemplate(t) {
   return {
     templateId: t._id,
+    ownerUsername: t.ownerUsername,
+    admins: t.admins,
     name: t.name,
     levels: t.levels,
     startingStack: t.startingStack,
@@ -160,7 +178,7 @@ app.post("/api/templates", requireAuth, async (req, res) => {
 });
 
 app.get("/api/templates", requireAuth, async (req, res) => {
-  const templates = await listTemplatesByOwner(req.username);
+  const templates = await listTemplatesForUser(req.username);
   res.json({ templates: templates.map(serializeTemplate) });
 });
 
@@ -298,6 +316,13 @@ app.post("/api/tournaments/:id/end", requireAuth, async (req, res) => {
   } catch (err) {
     console.error(`[history] snapshot failed for tournament ${tournament.id}:`, err);
   }
+  try {
+    // Recomputed (not incremented) from TournamentHistory, which the
+    // createHistory call above just wrote — see playerStore.js.
+    await recomputePlayerStatsForOwner(tournament.ownerUsername);
+  } catch (err) {
+    console.error(`[players] stat recompute failed for tournament ${tournament.id}:`, err);
+  }
   res.json({ ok: true });
 });
 
@@ -352,6 +377,59 @@ app.get("/api/history/:id", requireAuth, async (req, res) => {
     players: history.players,
     events: history.events,
   });
+});
+
+function serializePlayer(p) {
+  return {
+    playerId: p._id,
+    name: p.name,
+    nickname: p.nickname,
+    notes: p.notes,
+    phone: p.phone,
+    tournamentsPlayed: p.tournamentsPlayed,
+    lastPlayedAt: p.lastPlayedAt,
+    createdAt: p.createdAt,
+  };
+}
+
+// Players directory is owner-only (not shared with floor admins) — a
+// simpler scope than templates/history/tournaments, and not something the
+// feature asked to extend to co-admins.
+app.get("/api/players", requireAuth, async (req, res) => {
+  const { search, sort } = req.query;
+  const players = await listPlayersByOwner(req.username, { search, sort });
+  res.json({ players: players.map(serializePlayer) });
+});
+
+app.post("/api/players", requireAuth, async (req, res) => {
+  const { name, nickname, notes, phone } = req.body || {};
+  try {
+    const player = await createPlayer(req.username, { name, nickname, notes, phone });
+    res.status(201).json(serializePlayer(player));
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.patch("/api/players/:id", requireAuth, async (req, res) => {
+  const { name, nickname, notes, phone } = req.body || {};
+  try {
+    const player = await updatePlayer(req.params.id, req.username, { name, nickname, notes, phone });
+    if (!player) {
+      return res.status(404).json({ error: "Player not found" });
+    }
+    res.json(serializePlayer(player));
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete("/api/players/:id", requireAuth, async (req, res) => {
+  const player = await deletePlayer(req.params.id, req.username);
+  if (!player) {
+    return res.status(404).json({ error: "Player not found" });
+  }
+  res.status(204).end();
 });
 
 // Admin management is strictly owner-only — admins can run gameplay actions
@@ -431,6 +509,13 @@ app.post("/api/tournaments/:id/invitations/accept", requireAuth, async (req, res
   } catch (err) {
     console.error(`[persist] acceptInvitation failed for tournament ${tournament.id}:`, err);
   }
+  if (tournament.templateId) {
+    try {
+      await addTemplateAdmin(tournament.templateId, req.username);
+    } catch (err) {
+      console.error(`[template] addTemplateAdmin failed for tournament ${tournament.id}:`, err);
+    }
+  }
   res.json({ ok: true });
 });
 
@@ -501,17 +586,23 @@ io.on("connection", (socket) => {
     ack?.({ ok: true, state: tournament.getState() });
   });
 
-  function onManagerAction(event, mutate) {
+  // `afterPersist`, when given, receives mutate()'s return value — used by
+  // manager:addPlayer below to upsert the player directory with the
+  // resolved name (Quick Add defaults an empty name server-side).
+  function onManagerAction(event, mutate, afterPersist) {
     socket.on(event, ({ tournamentId, ...payload } = {}, ack) => {
       try {
         const tournament = requireOwnedTournament(socket, tournamentId);
-        mutate(tournament, payload);
+        const result = mutate(tournament, payload);
         broadcastTournament(tournament);
         ack?.({ ok: true });
         // Fire-and-forget: a Mongo hiccup must never stall the live clock or
         // the ack the client already received (see tournamentStore.js).
         persistTournament(tournament).catch((err) =>
           console.error(`[persist] ${event} failed for tournament ${tournamentId}:`, err),
+        );
+        afterPersist?.(tournament, result)?.catch?.((err) =>
+          console.error(`[players] ${event} directory sync failed for tournament ${tournamentId}:`, err),
         );
       } catch (error) {
         ack?.({ ok: false, error: error.message });
@@ -525,7 +616,11 @@ io.on("connection", (socket) => {
   onManagerAction("manager:skipLevel", (t) => t.skipLevel());
   onManagerAction("manager:previousLevel", (t) => t.previousLevel());
   onManagerAction("manager:updateStructure", (t, { levels }) => t.updateStructure(levels));
-  onManagerAction("manager:addPlayer", (t, { name }) => t.addPlayer(name));
+  onManagerAction(
+    "manager:addPlayer",
+    (t, { name }) => t.addPlayer(name),
+    (t, player) => upsertPlayerSeen(t.ownerUsername, player.name),
+  );
   onManagerAction("manager:removePlayer", (t, { playerId }) => t.removePlayer(playerId));
   onManagerAction("manager:eliminatePlayer", (t, { playerId }) => t.eliminatePlayer(playerId));
   onManagerAction("manager:reinstatePlayer", (t, { playerId }) => t.reinstatePlayer(playerId));
@@ -560,6 +655,15 @@ async function start() {
   } catch (err) {
     console.error("[startup] Failed to initialize MongoDB:", err);
     process.exit(1);
+  }
+
+  // Best-effort, not boot-fatal: backfills the player directory from
+  // existing TournamentHistory. Safe to run on every boot (see
+  // playerStore.recomputePlayerStatsForOwner).
+  try {
+    await backfillPlayerStatsFromHistory();
+  } catch (err) {
+    console.error("[players] startup backfill failed:", err);
   }
 
   httpServer.listen(PORT, () => {

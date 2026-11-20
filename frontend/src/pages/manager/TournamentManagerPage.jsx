@@ -160,6 +160,7 @@ export function TournamentManagerPage() {
   const [ending, setEnding] = useState(false);
   const [activeTab, setActiveTab] = useState("clock");
   const [historyId, setHistoryId] = useState(null);
+  const [playerDirectory, setPlayerDirectory] = useState([]);
   const { state, connected, error, connectionIssue, sendManagerAction } = useTournamentSocket({
     tournamentId,
     token,
@@ -172,6 +173,16 @@ export function TournamentManagerPage() {
       .then((data) => setHistoryId(data.history[0]?.historyId ?? null))
       .catch(() => setHistoryId(null));
   }, [state?.status, tournamentId, token]);
+
+  // Fetched once for the "+ Add with a name instead" autocomplete — a
+  // stale list here just means a returning player's name isn't suggested
+  // yet this session, not a correctness issue.
+  useEffect(() => {
+    api
+      .listPlayers(token)
+      .then((data) => setPlayerDirectory(data.players.map((p) => p.name)))
+      .catch(() => setPlayerDirectory([]));
+  }, [token]);
 
   async function handleEndTournament() {
     if (!window.confirm("End this tournament? This can't be undone.")) return;
@@ -271,6 +282,7 @@ export function TournamentManagerPage() {
 
             <PlayerManager
               players={state.players}
+              playerDirectory={playerDirectory}
               startingStack={state.totals.startingStack}
               allowRebuys={state.allowRebuys}
               rebuyLimitType={state.rebuyLimitType}

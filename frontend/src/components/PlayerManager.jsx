@@ -82,6 +82,7 @@ function StartingStackControl({ startingStack, onSetStartingStack }) {
 
 export function PlayerManager({
   players,
+  playerDirectory,
   startingStack,
   allowRebuys,
   rebuyLimitType,
@@ -158,10 +159,18 @@ export function PlayerManager({
             type="text"
             placeholder="Player name"
             autoFocus
+            list="player-directory-options"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-3 text-slate-100 outline-none focus:border-emerald-500 sm:py-2"
           />
+          {playerDirectory && playerDirectory.length > 0 && (
+            <datalist id="player-directory-options">
+              {playerDirectory.map((directoryName) => (
+                <option key={directoryName} value={directoryName} />
+              ))}
+            </datalist>
+          )}
           <button
             type="submit"
             className="rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-700 sm:py-2"
