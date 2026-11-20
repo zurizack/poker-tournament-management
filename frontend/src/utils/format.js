@@ -5,25 +5,30 @@ export function formatClock(ms) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-export function formatChips(amount) {
-  return amount.toLocaleString("en-US");
+export function formatChips(amount, locale = "en-US") {
+  return amount.toLocaleString(locale);
 }
 
 // Human-readable elapsed time for a tournament's lifetime (hours/minutes),
 // as opposed to formatClock's mm:ss countdown for a single level. Falls
 // back to seconds under a minute so a brief pause doesn't just read "0m".
-export function formatDuration(ms) {
-  if (ms < 60000) return `${Math.round(ms / 1000)}s`;
+// `t` is the active useLanguage().t — passing it translates the unit
+// suffixes; omitting it falls back to plain English letters.
+export function formatDuration(ms, t) {
+  const hourUnit = t ? t("common.hourAbbrev") : "h";
+  const minuteUnit = t ? t("common.minuteAbbrev") : "m";
+  const secondUnit = t ? t("common.secondAbbrev") : "s";
+  if (ms < 60000) return `${Math.round(ms / 1000)}${secondUnit}`;
   const totalMinutes = Math.round(ms / 60000);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  if (hours === 0) return `${minutes}m`;
-  return `${hours}h ${minutes}m`;
+  if (hours === 0) return `${minutes}${minuteUnit}`;
+  return `${hours}${hourUnit} ${minutes}${minuteUnit}`;
 }
 
-export function formatDateTime(epochMs) {
+export function formatDateTime(epochMs, locale = "en-US") {
   if (!epochMs) return "—";
-  return new Date(epochMs).toLocaleString("en-US", {
+  return new Date(epochMs).toLocaleString(locale, {
     dateStyle: "medium",
     timeStyle: "short",
   });

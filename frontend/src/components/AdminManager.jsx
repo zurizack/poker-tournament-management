@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLanguage } from "../context/LanguageContext";
 import { api } from "../lib/api";
 
 function AdminRow({ email, onRemove, removeLabel }) {
@@ -22,6 +23,7 @@ function AdminRow({ email, onRemove, removeLabel }) {
 // are what need to be live, and those already ride the existing
 // tournament:state broadcast with no extra plumbing.
 export function AdminManager({ token, tournamentId, onClose }) {
+  const { t } = useLanguage();
   const [ownerUsername, setOwnerUsername] = useState(null);
   const [admins, setAdmins] = useState([]);
   const [pendingAdmins, setPendingAdmins] = useState([]);
@@ -56,7 +58,7 @@ export function AdminManager({ token, tournamentId, onClose }) {
     try {
       await api.addAdmin(token, tournamentId, email);
       setEmail("");
-      setMessage("Invitation sent");
+      setMessage(t("admin.invitationSent"));
       await refresh();
     } catch (err) {
       setError(err.message);
@@ -80,13 +82,13 @@ export function AdminManager({ token, tournamentId, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
       <div className="w-full max-w-md rounded-xl border border-slate-800 bg-slate-900 p-5">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-100">Floor Managers</h2>
+          <h2 className="text-lg font-semibold text-slate-100">{t("admin.title")}</h2>
           <button type="button" onClick={onClose} className="text-slate-500 hover:text-slate-200">
             ✕
           </button>
         </div>
 
-        <p className="mb-3 text-sm text-slate-500">Owner: {ownerUsername}</p>
+        <p className="mb-3 text-sm text-slate-500">{t("admin.owner", { owner: ownerUsername })}</p>
 
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
         {message && <p className="mb-3 text-sm text-emerald-400">{message}</p>}
@@ -105,27 +107,27 @@ export function AdminManager({ token, tournamentId, onClose }) {
             onClick={handleAdd}
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
           >
-            {adding ? "Inviting..." : "Invite"}
+            {adding ? t("admin.inviting") : t("admin.invite")}
           </button>
         </div>
 
         {loading ? (
-          <p className="text-sm text-slate-500">Loading...</p>
+          <p className="text-sm text-slate-500">{t("common.loading")}</p>
         ) : (
           <div className="flex flex-col gap-4">
             <div>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-widest text-amber-400">
-                Pending ({pendingAdmins.length})
+                {t("admin.pendingHeader", { count: pendingAdmins.length })}
               </h3>
               {pendingAdmins.length === 0 ? (
-                <p className="text-sm text-slate-500">No pending invitations.</p>
+                <p className="text-sm text-slate-500">{t("admin.noPending")}</p>
               ) : (
                 <ul className="flex flex-col gap-2">
                   {pendingAdmins.map((admin) => (
                     <AdminRow
                       key={admin.username}
                       email={admin.email}
-                      removeLabel="Cancel"
+                      removeLabel={t("common.cancel")}
                       onRemove={() => handleRemove(admin.username)}
                     />
                   ))}
@@ -135,17 +137,17 @@ export function AdminManager({ token, tournamentId, onClose }) {
 
             <div>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
-                Active ({admins.length})
+                {t("admin.activeHeader", { count: admins.length })}
               </h3>
               {admins.length === 0 ? (
-                <p className="text-sm text-slate-500">No floor managers yet.</p>
+                <p className="text-sm text-slate-500">{t("admin.noActive")}</p>
               ) : (
                 <ul className="flex flex-col gap-2">
                   {admins.map((admin) => (
                     <AdminRow
                       key={admin.username}
                       email={admin.email}
-                      removeLabel="Remove"
+                      removeLabel={t("admin.remove")}
                       onRemove={() => handleRemove(admin.username)}
                     />
                   ))}

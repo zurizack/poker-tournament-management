@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "../../context/LanguageContext";
+import { LanguageToggle } from "../../components/LanguageToggle";
 import { SERVER_URL } from "../../lib/api";
 
 export function ManagerLoginPage() {
+  const { t } = useLanguage();
   const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [searchParams] = useSearchParams();
   const [error, setError] = useState(
-    searchParams.get("error") === "google_auth_failed" ? "Google sign-in failed. Please try again." : null,
+    searchParams.get("error") === "google_auth_failed" ? t("auth.googleFailed") : null,
   );
   const [submitting, setSubmitting] = useState(false);
   const { login, signup } = useAuth();
@@ -39,16 +42,19 @@ export function ManagerLoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-6 text-slate-100">
+      <div className="absolute end-4 top-4">
+        <LanguageToggle />
+      </div>
       <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-xl">
         <h1 className="mb-1 text-center text-2xl font-bold">
-          {mode === "login" ? "Manager Login" : "Create Manager Account"}
+          {mode === "login" ? t("auth.loginTitle") : t("auth.signupTitle")}
         </h1>
-        <p className="mb-6 text-center text-sm text-slate-400">Manage tournaments, structures, and players</p>
+        <p className="mb-6 text-center text-sm text-slate-400">{t("auth.subtitle")}</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
             type="text"
-            placeholder="Username"
+            placeholder={t("auth.usernamePlaceholder")}
             value={username}
             onChange={(event) => setUsername(event.target.value)}
             className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-500"
@@ -56,7 +62,7 @@ export function ManagerLoginPage() {
           />
           <input
             type="password"
-            placeholder="Password"
+            placeholder={t("auth.passwordPlaceholder")}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-500"
@@ -68,13 +74,13 @@ export function ManagerLoginPage() {
             disabled={submitting}
             className="rounded-lg bg-emerald-600 px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
           >
-            {mode === "login" ? "Sign In" : "Sign Up"}
+            {mode === "login" ? t("auth.signIn") : t("auth.signUp")}
           </button>
         </form>
 
         <div className="my-5 flex items-center gap-3">
           <div className="h-px flex-1 bg-slate-800" />
-          <span className="text-xs uppercase tracking-widest text-slate-600">or</span>
+          <span className="text-xs uppercase tracking-widest text-slate-600">{t("auth.or")}</span>
           <div className="h-px flex-1 bg-slate-800" />
         </div>
 
@@ -101,7 +107,7 @@ export function ManagerLoginPage() {
               d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42A11.95 11.95 0 0 0 12 0 11.99 11.99 0 0 0 1.29 6.62l3.98 3.12C6.22 6.86 8.87 4.75 12 4.75z"
             />
           </svg>
-          Sign in with Google
+          {t("auth.googleSignIn")}
         </button>
 
         <button
@@ -112,7 +118,7 @@ export function ManagerLoginPage() {
           }}
           className="mt-4 w-full text-center text-sm text-slate-500 hover:text-slate-300"
         >
-          {mode === "login" ? "Need an account? Sign up" : "Already have an account? Sign in"}
+          {mode === "login" ? t("auth.needAccount") : t("auth.haveAccount")}
         </button>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLanguage } from "../context/LanguageContext";
 
 function toRow(level) {
   return {
@@ -25,6 +26,7 @@ function toLevelPayload(row) {
 // TemplateManager (editing a saved blueprint) — same inputs, same
 // add/remove behavior.
 export function LevelsEditor({ levels, disabled, onChange }) {
+  const { t } = useLanguage();
   const [rows, setRows] = useState(() => levels.map(toRow));
 
   useEffect(() => {
@@ -57,18 +59,18 @@ export function LevelsEditor({ levels, disabled, onChange }) {
 
   return (
     <div>
-      <p className="mb-3 text-xs text-slate-500 sm:hidden">Swipe the table sideways to see every column.</p>
+      <p className="mb-3 text-xs text-slate-500 sm:hidden">{t("levels.swipeHint")}</p>
 
       <div className="mb-4 overflow-x-auto">
         <table className="w-full min-w-[480px] text-sm">
           <thead>
-            <tr className="text-left text-slate-500">
+            <tr className="text-start text-slate-500">
               <th className="px-2 py-1">#</th>
-              <th className="px-2 py-1">Small Blind</th>
-              <th className="px-2 py-1">Big Blind</th>
-              <th className="px-2 py-1">Ante</th>
-              <th className="px-2 py-1">Minutes</th>
-              <th className="px-2 py-1">Break</th>
+              <th className="px-2 py-1">{t("levels.colSmallBlind")}</th>
+              <th className="px-2 py-1">{t("levels.colBigBlind")}</th>
+              <th className="px-2 py-1">{t("levels.colAnte")}</th>
+              <th className="px-2 py-1">{t("levels.colMinutes")}</th>
+              <th className="px-2 py-1">{t("levels.colBreak")}</th>
               <th className="px-2 py-1" />
             </tr>
           </thead>
@@ -148,7 +150,7 @@ export function LevelsEditor({ levels, disabled, onChange }) {
           onClick={addLevel}
           className="rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-700 disabled:opacity-40 sm:py-2"
         >
-          + Add Level
+          {t("levels.addLevel")}
         </button>
         <button
           type="button"
@@ -156,7 +158,7 @@ export function LevelsEditor({ levels, disabled, onChange }) {
           onClick={addBreak}
           className="rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-amber-300 hover:bg-slate-700 disabled:opacity-40 sm:py-2"
         >
-          + Add Break
+          {t("levels.addBreak")}
         </button>
       </div>
     </div>

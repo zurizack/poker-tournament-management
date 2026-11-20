@@ -1,19 +1,21 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import { PendingInvitations } from "../../components/PendingInvitations";
+import { MirroredGlyph } from "../../components/MirroredGlyph";
 import { formatDateTime, formatDuration } from "../../utils/format";
 
 const RECENT_COUNT = 5;
 
-function OverviewCard({ title, viewAllTo, children }) {
+function OverviewCard({ title, viewAllTo, viewAllLabel, children }) {
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
         <Link to={viewAllTo} className="text-sm text-slate-500 hover:text-slate-300">
-          View All →
+          {viewAllLabel} <MirroredGlyph>→</MirroredGlyph>
         </Link>
       </div>
       {children}
@@ -23,6 +25,7 @@ function OverviewCard({ title, viewAllTo, children }) {
 
 export function DashboardPage() {
   const { token, username } = useAuth();
+  const { t, locale } = useLanguage();
   const navigate = useNavigate();
 
   const [pending, setPending] = useState([]);
@@ -59,14 +62,14 @@ export function DashboardPage() {
     <div className="px-6 py-10">
       <div className="mx-auto max-w-5xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold">דף הבית</h1>
-          <p className="text-sm text-slate-400">Signed in as {username}</p>
+          <h1 className="text-2xl font-bold">{t("nav.dashboard")}</h1>
+          <p className="text-sm text-slate-400">{t("nav.signedInAs", { username })}</p>
         </div>
 
         {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
 
         {loading ? (
-          <p className="text-slate-500">Loading overview...</p>
+          <p className="text-slate-500">{t("dashboard.loadingOverview")}</p>
         ) : (
           <div className="flex flex-col gap-6">
             <button
@@ -74,7 +77,7 @@ export function DashboardPage() {
               onClick={() => navigate("/manager/setup")}
               className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-emerald-500 sm:w-auto"
             >
-              + Create New Tournament
+              {t("dashboard.createTournament")}
             </button>
 
             {pending.length > 0 && (
@@ -82,21 +85,28 @@ export function DashboardPage() {
             )}
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <OverviewCard title="Active Tournaments" viewAllTo="/manager/tournaments">
+              <OverviewCard
+                title={t("dashboard.activeTournaments")}
+                viewAllTo="/manager/tournaments"
+                viewAllLabel={t("common.viewAll")}
+              >
                 {recentTournaments.length === 0 ? (
-                  <p className="text-sm text-slate-500">No active tournaments yet.</p>
+                  <p className="text-sm text-slate-500">{t("dashboard.noActiveTournaments")}</p>
                 ) : (
                   <ul className="flex flex-col gap-2">
-                    {recentTournaments.map((t) => (
-                      <li key={t.tournamentId}>
+                    {recentTournaments.map((tournament) => (
+                      <li key={tournament.tournamentId}>
                         <button
                           type="button"
-                          onClick={() => navigate(`/manager/${t.tournamentId}`)}
-                          className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-left hover:border-emerald-600"
+                          onClick={() => navigate(`/manager/${tournament.tournamentId}`)}
+                          className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-start hover:border-emerald-600"
                         >
-                          <span className="font-semibold text-slate-100">{t.name || "Unnamed Tournament"}</span>
+                          <span className="font-semibold text-slate-100">
+                            {tournament.name || t("common.unnamedTournament")}
+                          </span>
                           <span className="text-sm text-slate-500">
-                            {t.playerCount} player{t.playerCount === 1 ? "" : "s"}
+                            {tournament.playerCount}{" "}
+                            {tournament.playerCount === 1 ? t("common.player") : t("common.playersPlural")}
                           </span>
                         </button>
                       </li>
@@ -105,21 +115,25 @@ export function DashboardPage() {
                 )}
               </OverviewCard>
 
-              <OverviewCard title="Templates" viewAllTo="/manager/templates">
+              <OverviewCard
+                title={t("nav.templates")}
+                viewAllTo="/manager/templates"
+                viewAllLabel={t("common.viewAll")}
+              >
                 {recentTemplates.length === 0 ? (
-                  <p className="text-sm text-slate-500">
-                    No templates yet. Save one from the tournament setup form.
-                  </p>
+                  <p className="text-sm text-slate-500">{t("dashboard.noTemplatesYet")}</p>
                 ) : (
                   <ul className="flex flex-col gap-2">
-                    {recentTemplates.map((t) => (
+                    {recentTemplates.map((template) => (
                       <li
-                        key={t.templateId}
+                        key={template.templateId}
                         className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-3"
                       >
-                        <div className="font-semibold text-slate-100">{t.name}</div>
+                        <div className="font-semibold text-slate-100">{template.name}</div>
                         <div className="text-xs text-slate-500">
-                          {t.ownerUsername === username ? "Created by me" : `Shared by ${t.ownerUsername}`}
+                          {template.ownerUsername === username
+                            ? t("dashboard.createdByMe")
+                            : t("dashboard.sharedBy", { owner: template.ownerUsername })}
                         </div>
                       </li>
                     ))}
@@ -127,9 +141,13 @@ export function DashboardPage() {
                 )}
               </OverviewCard>
 
-              <OverviewCard title="History" viewAllTo="/manager/history">
+              <OverviewCard
+                title={t("nav.history")}
+                viewAllTo="/manager/history"
+                viewAllLabel={t("common.viewAll")}
+              >
                 {recentHistory.length === 0 ? (
-                  <p className="text-sm text-slate-500">No completed tournaments yet.</p>
+                  <p className="text-sm text-slate-500">{t("dashboard.noHistoryYet")}</p>
                 ) : (
                   <ul className="flex flex-col gap-2">
                     {recentHistory.map((h) => (
@@ -140,13 +158,17 @@ export function DashboardPage() {
                         <button
                           type="button"
                           onClick={() => navigate(`/manager/history/${h.historyId}`)}
-                          className="flex w-full items-center justify-between text-left"
+                          className="flex w-full items-center justify-between text-start"
                         >
                           <div>
-                            <div className="font-semibold text-slate-100">{h.name || "Unnamed Tournament"}</div>
-                            <div className="text-xs text-slate-500">{formatDateTime(h.endedAt)}</div>
+                            <div className="font-semibold text-slate-100">
+                              {h.name || t("common.unnamedTournament")}
+                            </div>
+                            <div className="text-xs text-slate-500">{formatDateTime(h.endedAt, locale)}</div>
                           </div>
-                          <span className="text-sm text-slate-500">{formatDuration(h.activeDurationMs)}</span>
+                          <span className="text-sm text-slate-500">
+                            {formatDuration(h.activeDurationMs, t)}
+                          </span>
                         </button>
                       </li>
                     ))}
@@ -154,9 +176,14 @@ export function DashboardPage() {
                 )}
               </OverviewCard>
 
-              <OverviewCard title="Players" viewAllTo="/manager/players">
+              <OverviewCard
+                title={t("nav.players")}
+                viewAllTo="/manager/players"
+                viewAllLabel={t("common.viewAll")}
+              >
                 <p className="mb-3 text-sm text-slate-400">
-                  {playerStats.total} player{playerStats.total === 1 ? "" : "s"} in your directory
+                  {playerStats.total} {playerStats.total === 1 ? t("common.player") : t("common.playersPlural")}{" "}
+                  {t("dashboard.inYourDirectory")}
                 </p>
                 {playerStats.recent.length > 0 && (
                   <ul className="flex flex-col gap-2">
@@ -167,7 +194,10 @@ export function DashboardPage() {
                       >
                         <span className="font-semibold text-slate-100">{p.name}</span>
                         <span className="text-xs text-slate-500">
-                          {p.tournamentsPlayed} tournament{p.tournamentsPlayed === 1 ? "" : "s"}
+                          {p.tournamentsPlayed}{" "}
+                          {p.tournamentsPlayed === 1
+                            ? t("players.tournamentPlayed")
+                            : t("players.tournamentsPlayedPlural")}
                         </span>
                       </li>
                     ))}

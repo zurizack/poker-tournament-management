@@ -1,3 +1,6 @@
+import { useLanguage } from "../context/LanguageContext";
+import { MirroredGlyph } from "./MirroredGlyph";
+
 function Button({ onClick, disabled, variant = "default", children }) {
   const variants = {
     default: "bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-100",
@@ -21,25 +24,30 @@ function Button({ onClick, disabled, variant = "default", children }) {
 // nothing smaller than a comfortable tap target); collapses to a single
 // centered row once there's enough width for it.
 export function ControlPanel({ status, onStart, onPause, onReset, onSkipLevel, onPreviousLevel }) {
+  const { t } = useLanguage();
   const isRunning = status === "running";
 
   return (
     <div className="grid grid-cols-2 gap-3 border-t border-slate-800 bg-slate-900 p-4 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-3 sm:p-5">
-      <Button onClick={onPreviousLevel}>◀ Previous</Button>
+      <Button onClick={onPreviousLevel}>
+        <MirroredGlyph>◀</MirroredGlyph> {t("control.previous")}
+      </Button>
 
       {isRunning ? (
         <Button onClick={onPause} variant="warning">
-          Pause
+          {t("control.pause")}
         </Button>
       ) : (
         <Button onClick={onStart} variant="primary">
-          Start
+          {t("control.start")}
         </Button>
       )}
 
-      <Button onClick={onReset}>Reset</Button>
+      <Button onClick={onReset}>{t("control.reset")}</Button>
 
-      <Button onClick={onSkipLevel}>Skip ▶</Button>
+      <Button onClick={onSkipLevel}>
+        {t("control.skip")} <MirroredGlyph>▶</MirroredGlyph>
+      </Button>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLanguage } from "../context/LanguageContext";
 import { formatChips } from "../utils/format";
 
 // Mobile-first: 36px tap targets by default, shrinking down on sm+ where a
@@ -8,7 +9,7 @@ function Counter({ label, value, onIncrement, onDecrement, incrementDisabled, hi
     <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-900 px-2 py-1 sm:w-auto sm:justify-start sm:gap-1.5 sm:bg-transparent sm:px-0 sm:py-0">
       <span className="text-sm text-slate-400 sm:w-14 sm:text-xs sm:text-slate-500">
         {label}
-        {hint && <span className="ml-1 text-slate-600">{hint}</span>}
+        {hint && <span className="ms-1 text-slate-600">{hint}</span>}
       </span>
       <div className="flex items-center gap-2 sm:gap-1.5">
         <button
@@ -34,6 +35,7 @@ function Counter({ label, value, onIncrement, onDecrement, incrementDisabled, hi
 }
 
 function StartingStackControl({ startingStack, onSetStartingStack }) {
+  const { t } = useLanguage();
   const [value, setValue] = useState(startingStack);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -57,7 +59,7 @@ function StartingStackControl({ startingStack, onSetStartingStack }) {
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-sm text-slate-400">
       <label htmlFor="startingStack" className="whitespace-nowrap">
-        Chips per buy-in
+        {t("player.chipsPerBuyIn")}
       </label>
       <input
         id="startingStack"
@@ -73,7 +75,7 @@ function StartingStackControl({ startingStack, onSetStartingStack }) {
         disabled={saving}
         className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700 disabled:opacity-50"
       >
-        {saving ? "Saving..." : "Set"}
+        {saving ? t("common.saving") : t("player.set")}
       </button>
       {error && <span className="text-red-400">{error}</span>}
     </div>
@@ -100,6 +102,7 @@ export function PlayerManager({
   onRecordAddOn,
   onUndoAddOn,
 }) {
+  const { t, locale } = useLanguage();
   const [namedMode, setNamedMode] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState(null);
@@ -125,14 +128,14 @@ export function PlayerManager({
   }
 
   function handleDelete(player) {
-    if (window.confirm(`Delete ${player.name}? This removes their buy-in/rebuy history from the pot.`)) {
+    if (window.confirm(t("player.deleteConfirm", { name: player.name }))) {
       onRemovePlayer(player.id);
     }
   }
 
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
-      <h2 className="mb-4 text-lg font-semibold text-slate-100">Players &amp; Rebuys</h2>
+      <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("player.heading")}</h2>
 
       <StartingStackControl startingStack={startingStack} onSetStartingStack={onSetStartingStack} />
 
@@ -142,14 +145,14 @@ export function PlayerManager({
           onClick={handleQuickAdd}
           className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-base font-bold text-white hover:bg-emerald-500 sm:w-auto sm:py-2 sm:text-sm sm:font-semibold"
         >
-          ⚡ Quick Add Player
+          {t("player.quickAdd")}
         </button>
         <button
           type="button"
           onClick={() => setNamedMode((v) => !v)}
           className="text-sm text-slate-500 hover:text-slate-300"
         >
-          {namedMode ? "Cancel named add" : "+ Add with a name instead"}
+          {namedMode ? t("player.cancelNamedAdd") : t("player.addWithName")}
         </button>
       </div>
 
@@ -157,7 +160,7 @@ export function PlayerManager({
         <form onSubmit={handleAddNamed} className="mb-4 flex gap-2">
           <input
             type="text"
-            placeholder="Player name"
+            placeholder={t("player.namePlaceholder")}
             autoFocus
             list="player-directory-options"
             value={name}
@@ -175,7 +178,7 @@ export function PlayerManager({
             type="submit"
             className="rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-700 sm:py-2"
           >
-            Add
+            {t("common.add")}
           </button>
         </form>
       )}
@@ -183,7 +186,7 @@ export function PlayerManager({
       {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
       {players.length === 0 ? (
-        <p className="text-sm text-slate-500">No players yet — use Quick Add to seat someone instantly.</p>
+        <p className="text-sm text-slate-500">{t("player.noneYet")}</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {players.map((player) => {
@@ -202,25 +205,27 @@ export function PlayerManager({
                     </span>
                     {isOut && (
                       <span className="rounded-full bg-red-900/60 px-2 py-0.5 text-xs font-semibold uppercase text-red-300">
-                        Out
+                        {t("player.eliminatedBadge")}
                       </span>
                     )}
                   </div>
                   <span className="text-xs text-slate-500">
-                    Stack ~{formatChips((player.buyIns + player.rebuys + player.addOns) * startingStack)}
+                    {t("player.stackApprox", {
+                      amount: formatChips((player.buyIns + player.rebuys + player.addOns) * startingStack, locale),
+                    })}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-row sm:items-center sm:gap-4">
                   <Counter
-                    label="Buy-in"
+                    label={t("player.buyIn")}
                     value={player.buyIns}
                     onIncrement={() => onRecordBuyIn(player.id)}
                     onDecrement={() => onUndoBuyIn(player.id)}
                   />
                   {allowRebuys && (
                     <Counter
-                      label="Rebuy"
+                      label={t("player.rebuy")}
                       value={player.rebuys}
                       hint={rebuyLimitType === "limited" ? `/${maxRebuysPerPlayer}` : null}
                       incrementDisabled={rebuyLimitType === "limited" && player.rebuys >= maxRebuysPerPlayer}
@@ -230,7 +235,7 @@ export function PlayerManager({
                   )}
                   {allowAddOn && (
                     <Counter
-                      label="Add-on"
+                      label={t("player.addOn")}
                       value={player.addOns}
                       onIncrement={() => onRecordAddOn(player.id)}
                       onDecrement={() => onUndoAddOn(player.id)}
@@ -245,7 +250,7 @@ export function PlayerManager({
                       onClick={() => onReinstatePlayer(player.id)}
                       className="rounded-lg bg-slate-800 px-3 py-2.5 text-sm font-semibold text-emerald-400 hover:bg-slate-700 sm:py-1.5"
                     >
-                      Reinstate
+                      {t("player.reinstate")}
                     </button>
                   ) : (
                     <button
@@ -253,7 +258,7 @@ export function PlayerManager({
                       onClick={() => onEliminatePlayer(player.id)}
                       className="rounded-lg bg-slate-800 px-3 py-2.5 text-sm font-semibold text-amber-400 hover:bg-slate-700 sm:py-1.5"
                     >
-                      Eliminate
+                      {t("player.eliminate")}
                     </button>
                   )}
                   <button
@@ -261,7 +266,7 @@ export function PlayerManager({
                     onClick={() => handleDelete(player)}
                     className="rounded-lg bg-slate-800 px-3 py-2.5 text-sm font-semibold text-red-400 hover:bg-slate-700 sm:py-1.5"
                   >
-                    Delete
+                    {t("common.delete")}
                   </button>
                 </div>
               </li>

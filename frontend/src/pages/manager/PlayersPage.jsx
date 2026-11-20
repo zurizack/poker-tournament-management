@@ -1,38 +1,40 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import { formatDateTime } from "../../utils/format";
 
 const BLANK_FORM = { name: "", nickname: "", phone: "", notes: "" };
 
 function PlayerForm({ form, setForm, onSave, onCancel, saving }) {
+  const { t } = useLanguage();
   return (
     <div className="mb-4 rounded-lg border border-slate-800 bg-slate-950 p-3 sm:p-4">
       <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <input
           type="text"
-          placeholder="Name (required)"
+          placeholder={t("players.namePlaceholder")}
           value={form.name}
           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
           className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
         />
         <input
           type="text"
-          placeholder="Nickname"
+          placeholder={t("players.nicknamePlaceholder")}
           value={form.nickname}
           onChange={(e) => setForm((f) => ({ ...f, nickname: e.target.value }))}
           className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
         />
         <input
           type="text"
-          placeholder="Phone"
+          placeholder={t("players.phonePlaceholder")}
           value={form.phone}
           onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
           className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
         />
         <input
           type="text"
-          placeholder="Notes"
+          placeholder={t("players.notesPlaceholder")}
           value={form.notes}
           onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
           className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
@@ -45,14 +47,14 @@ function PlayerForm({ form, setForm, onSave, onCancel, saving }) {
           onClick={onSave}
           className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
         >
-          {saving ? "Saving..." : "Save"}
+          {saving ? t("common.saving") : t("common.save")}
         </button>
         <button
           type="button"
           onClick={onCancel}
           className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
       </div>
     </div>
@@ -61,6 +63,7 @@ function PlayerForm({ form, setForm, onSave, onCancel, saving }) {
 
 export function PlayersPage() {
   const { token } = useAuth();
+  const { t, locale } = useLanguage();
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -118,7 +121,7 @@ export function PlayersPage() {
   }
 
   async function handleDelete(player) {
-    if (!window.confirm(`Remove ${player.name} from the directory?`)) return;
+    if (!window.confirm(t("players.removeConfirm", { name: player.name }))) return;
     setError(null);
     try {
       await api.deletePlayer(token, player.playerId);
@@ -132,14 +135,14 @@ export function PlayersPage() {
     <div className="px-6 py-10">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Players</h1>
+          <h1 className="text-2xl font-bold">{t("nav.players")}</h1>
           {editingId === null && (
             <button
               type="button"
               onClick={openNew}
               className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
             >
-              + Add Player
+              {t("players.addPlayer")}
             </button>
           )}
         </div>
@@ -147,7 +150,7 @@ export function PlayersPage() {
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <input
             type="text"
-            placeholder="Search by name..."
+            placeholder={t("players.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1 rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
@@ -157,8 +160,8 @@ export function PlayersPage() {
             onChange={(e) => setSort(e.target.value)}
             className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
           >
-            <option value="lastPlayedAt">Sort: Last played</option>
-            <option value="name">Sort: Name</option>
+            <option value="lastPlayedAt">{t("players.sortLastPlayed")}</option>
+            <option value="name">{t("players.sortName")}</option>
           </select>
         </div>
 
@@ -169,11 +172,9 @@ export function PlayersPage() {
         )}
 
         {loading ? (
-          <p className="text-slate-500">Loading players...</p>
+          <p className="text-slate-500">{t("players.loading")}</p>
         ) : players.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            No players yet. They're added automatically when seated in a tournament, or add one manually above.
-          </p>
+          <p className="text-sm text-slate-500">{t("players.noneYet")}</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {players.map((player) => (
@@ -184,11 +185,15 @@ export function PlayersPage() {
                 <div>
                   <div className="font-semibold text-slate-100">
                     {player.name}
-                    {player.nickname && <span className="ml-2 text-slate-500">"{player.nickname}"</span>}
+                    {player.nickname && <span className="ms-2 text-slate-500">"{player.nickname}"</span>}
                   </div>
                   <div className="text-xs text-slate-500">
-                    {player.tournamentsPlayed} tournament{player.tournamentsPlayed === 1 ? "" : "s"} played · last
-                    played {formatDateTime(player.lastPlayedAt)}
+                    {player.tournamentsPlayed}{" "}
+                    {player.tournamentsPlayed === 1
+                      ? t("players.tournamentPlayed")
+                      : t("players.tournamentsPlayedPlural")}{" "}
+                    {t("players.tournamentsPlayedSuffix")} ·{" "}
+                    {t("players.lastPlayed", { date: formatDateTime(player.lastPlayedAt, locale) })}
                     {player.phone && <span> · {player.phone}</span>}
                   </div>
                   {player.notes && <div className="mt-1 text-xs text-slate-400">{player.notes}</div>}
@@ -199,14 +204,14 @@ export function PlayersPage() {
                     onClick={() => openEdit(player)}
                     className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700"
                   >
-                    Edit
+                    {t("common.edit")}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDelete(player)}
                     className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-red-400 hover:bg-slate-700"
                   >
-                    Delete
+                    {t("common.delete")}
                   </button>
                 </div>
               </li>

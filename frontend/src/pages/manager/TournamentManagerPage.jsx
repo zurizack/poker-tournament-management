@@ -1,24 +1,29 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { useTournamentSocket } from "../../hooks/useTournamentSocket";
 import { ClockDisplay } from "../../components/ClockDisplay";
 import { ControlPanel } from "../../components/ControlPanel";
 import { PlayerManager } from "../../components/PlayerManager";
 import { AdminManager } from "../../components/AdminManager";
 import { LevelsEditor } from "../../components/LevelsEditor";
+import { MirroredGlyph } from "../../components/MirroredGlyph";
+import { LanguageToggle } from "../../components/LanguageToggle";
 import { api } from "../../lib/api";
-
-const TABS = [
-  { id: "clock", label: "Live Clock" },
-  { id: "structure", label: "Blind Structure" },
-  { id: "settings", label: "Settings" },
-];
+import { formatChips } from "../../utils/format";
 
 function TabBar({ activeTab, onChange }) {
+  const { t } = useLanguage();
+  const tabs = [
+    { id: "clock", label: t("live.tabClock") },
+    { id: "structure", label: t("setup.blindStructure") },
+    { id: "settings", label: t("live.tabSettings") },
+  ];
+
   return (
     <div className="flex gap-1 border-b border-slate-800 px-4 sm:px-6">
-      {TABS.map((tab) => (
+      {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
@@ -37,6 +42,7 @@ function TabBar({ activeTab, onChange }) {
 }
 
 function BlindStructureTab({ state, sendManagerAction }) {
+  const { t } = useLanguage();
   const [levels, setLevels] = useState(state.clock.levels);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
@@ -52,7 +58,7 @@ function BlindStructureTab({ state, sendManagerAction }) {
     setMessage(null);
     try {
       await sendManagerAction("manager:updateStructure", { levels });
-      setMessage({ type: "success", text: "Structure saved" });
+      setMessage({ type: "success", text: t("live.structureSaved") });
     } catch (err) {
       setMessage({ type: "error", text: err.message });
     } finally {
@@ -62,10 +68,12 @@ function BlindStructureTab({ state, sendManagerAction }) {
 
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
-      <h2 className="mb-1 text-lg font-semibold text-slate-100">Blind Structure</h2>
+      <h2 className="mb-1 text-lg font-semibold text-slate-100">{t("setup.blindStructure")}</h2>
       <p className="mb-4 text-sm text-slate-500">
-        Currently on level {state.clock.currentLevelIndex + 1} of {state.clock.totalLevels}. Edits save live —
-        no need to pause.
+        {t("live.structureNote", {
+          current: state.clock.currentLevelIndex + 1,
+          total: state.clock.totalLevels,
+        })}
       </p>
 
       <LevelsEditor levels={levels} onChange={setLevels} />
@@ -76,7 +84,7 @@ function BlindStructureTab({ state, sendManagerAction }) {
         onClick={handleSave}
         className="mt-3 w-full rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 sm:w-auto"
       >
-        {saving ? "Saving..." : "Save Structure"}
+        {saving ? t("common.saving") : t("live.saveStructure")}
       </button>
 
       {message && (
@@ -89,6 +97,7 @@ function BlindStructureTab({ state, sendManagerAction }) {
 }
 
 function SettingsTab({ state, username, ending, onEndTournament }) {
+  const { t, locale } = useLanguage();
   const [showAdmins, setShowAdmins] = useState(false);
   const { token } = useAuth();
   const isOwner = state.ownerUsername === username;
@@ -96,35 +105,35 @@ function SettingsTab({ state, username, ending, onEndTournament }) {
   return (
     <div className="flex flex-col gap-6">
       <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
-        <h2 className="mb-4 text-lg font-semibold text-slate-100">Configuration</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("live.configuration")}</h2>
         <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-slate-500">Starting stack</dt>
-            <dd className="text-slate-200">{state.totals.startingStack}</dd>
+            <dt className="text-slate-500">{t("setup.startingStackLabel")}</dt>
+            <dd className="text-slate-200">{formatChips(state.totals.startingStack, locale)}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Re-buys</dt>
+            <dt className="text-slate-500">{t("live.rebuysLabel")}</dt>
             <dd className="text-slate-200">
               {!state.allowRebuys
-                ? "Not allowed"
+                ? t("live.notAllowed")
                 : state.rebuyLimitType === "limited"
-                  ? `Limited — max ${state.maxRebuysPerPlayer} per player`
-                  : "Unlimited"}
+                  ? t("live.limitedMax", { max: state.maxRebuysPerPlayer })
+                  : t("setup.unlimited")}
             </dd>
           </div>
           <div>
-            <dt className="text-slate-500">Add-ons</dt>
-            <dd className="text-slate-200">{state.allowAddOn ? "Allowed" : "Not allowed"}</dd>
+            <dt className="text-slate-500">{t("live.addOnsLabel")}</dt>
+            <dd className="text-slate-200">{state.allowAddOn ? t("live.allowed") : t("live.notAllowed")}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Owner</dt>
+            <dt className="text-slate-500">{t("live.ownerLabel")}</dt>
             <dd className="text-slate-200">{state.ownerUsername}</dd>
           </div>
         </dl>
       </div>
 
       <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
-        <h2 className="mb-4 text-lg font-semibold text-slate-100">Management</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("live.management")}</h2>
         <div className="flex flex-wrap gap-3">
           {isOwner && (
             <button
@@ -132,7 +141,7 @@ function SettingsTab({ state, username, ending, onEndTournament }) {
               onClick={() => setShowAdmins(true)}
               className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700"
             >
-              Floor Managers
+              {t("live.floorManagers")}
             </button>
           )}
           <button
@@ -141,7 +150,7 @@ function SettingsTab({ state, username, ending, onEndTournament }) {
             onClick={onEndTournament}
             className="rounded-lg bg-red-900 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-800 disabled:opacity-50"
           >
-            {ending ? "Ending..." : "End Tournament"}
+            {ending ? t("live.ending") : t("live.endTournament")}
           </button>
         </div>
       </div>
@@ -156,6 +165,7 @@ function SettingsTab({ state, username, ending, onEndTournament }) {
 export function TournamentManagerPage() {
   const { tournamentId } = useParams();
   const { token, username } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [ending, setEnding] = useState(false);
   const [activeTab, setActiveTab] = useState("clock");
@@ -185,7 +195,7 @@ export function TournamentManagerPage() {
   }, [token]);
 
   async function handleEndTournament() {
-    if (!window.confirm("End this tournament? This can't be undone.")) return;
+    if (!window.confirm(t("live.endConfirm"))) return;
     setEnding(true);
     try {
       await api.endTournament(token, tournamentId);
@@ -201,7 +211,7 @@ export function TournamentManagerPage() {
       <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-slate-950 px-4 text-center text-slate-100">
         <p className="text-xl font-semibold text-red-400">{error}</p>
         <Link to="/manager" className="text-slate-400 hover:text-slate-200">
-          ← Back to dashboard
+          <MirroredGlyph>←</MirroredGlyph> {t("nav.dashboard")}
         </Link>
       </div>
     );
@@ -211,7 +221,7 @@ export function TournamentManagerPage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-slate-950 px-4 text-center text-slate-100">
         <p className="text-xl font-semibold text-amber-400">{connectionIssue}</p>
-        <p className="text-slate-500">This should recover automatically once the server responds.</p>
+        <p className="text-slate-500">{t("live.connectionRecover")}</p>
       </div>
     );
   }
@@ -219,7 +229,7 @@ export function TournamentManagerPage() {
   if (!state) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950 text-xl text-slate-500">
-        Loading tournament...
+        {t("live.loadingTournament")}
       </div>
     );
   }
@@ -227,17 +237,17 @@ export function TournamentManagerPage() {
   if (state.status === "ended") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-950 px-4 text-center text-slate-100">
-        <p className="text-xl font-semibold text-slate-300">This tournament has ended.</p>
+        <p className="text-xl font-semibold text-slate-300">{t("live.ended")}</p>
         {historyId && (
           <Link
             to={`/manager/history/${historyId}`}
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
           >
-            View History Report →
+            {t("live.viewHistoryReport")} <MirroredGlyph>→</MirroredGlyph>
           </Link>
         )}
         <Link to="/manager" className="text-slate-400 hover:text-slate-200">
-          ← Back to dashboard
+          <MirroredGlyph>←</MirroredGlyph> {t("nav.dashboard")}
         </Link>
       </div>
     );
@@ -248,19 +258,22 @@ export function TournamentManagerPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-4 py-4 sm:px-6">
         <div>
           <Link to="/manager" className="text-sm text-slate-500 hover:text-slate-300">
-            ← Dashboard
+            <MirroredGlyph>←</MirroredGlyph> {t("nav.dashboard")}
           </Link>
-          <h1 className="text-2xl font-bold text-slate-100">{state.name || "Unnamed Tournament"}</h1>
+          <h1 className="text-2xl font-bold text-slate-100">{state.name || t("common.unnamedTournament")}</h1>
           <p className="font-mono text-sm tracking-widest text-slate-500">{tournamentId}</p>
-          <p className="text-sm text-slate-400">Share this ID with players to join</p>
+          <p className="text-sm text-slate-400">{t("live.shareIdHint")}</p>
         </div>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-widest ${
-            connected ? "bg-emerald-900 text-emerald-300" : "bg-red-900 text-red-200"
-          }`}
-        >
-          {connected ? "Connected" : "Disconnected"}
-        </span>
+        <div className="flex items-center gap-3">
+          <LanguageToggle />
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-widest ${
+              connected ? "bg-emerald-900 text-emerald-300" : "bg-red-900 text-red-200"
+            }`}
+          >
+            {connected ? t("live.connected") : t("live.disconnected")}
+          </span>
+        </div>
       </div>
 
       <TabBar activeTab={activeTab} onChange={setActiveTab} />

@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import { LevelsEditor } from "../../components/LevelsEditor";
+import { MirroredGlyph } from "../../components/MirroredGlyph";
+import { LanguageToggle } from "../../components/LanguageToggle";
 
 // Single source of truth for both "create from scratch" and "launch/edit an
 // existing template" — loading a template just pre-fills this same form.
@@ -10,6 +13,7 @@ const STARTER_LEVELS = [{ smallBlind: 25, bigBlind: 50, ante: 0, durationSeconds
 
 export function TournamentSetupPage() {
   const { token, username } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // Captured once — the template this form was opened from. `templateId`
@@ -41,9 +45,9 @@ export function TournamentSetupPage() {
     api
       .listTemplates(token)
       .then((data) => {
-        const template = data.templates.find((t) => t.templateId === initialTemplateId);
+        const template = data.templates.find((tpl) => tpl.templateId === initialTemplateId);
         if (!template) {
-          setError("That template couldn't be found — it may have been deleted.");
+          setError(t("setup.errTemplateNotFound"));
           return;
         }
         setName(template.name);
@@ -57,15 +61,16 @@ export function TournamentSetupPage() {
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoadingTemplate(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTemplateId, token]);
 
   function validate() {
     if (!name.trim()) {
-      setError("Tournament name is required.");
+      setError(t("setup.errNameRequired"));
       return false;
     }
     if (rebuyLimitType === "limited" && !(Number(maxRebuysPerPlayer) > 0)) {
-      setError("Enter a positive max re-buys per player, or switch to Unlimited.");
+      setError(t("setup.errMaxRebuys"));
       return false;
     }
     return true;
@@ -97,12 +102,12 @@ export function TournamentSetupPage() {
     try {
       if (templateId && !isSharedTemplate) {
         await api.updateTemplate(token, templateId, buildConfig());
-        setStatusMessage("Template saved.");
+        setStatusMessage(t("setup.templateSaved"));
       } else {
         const created = await api.createTemplate(token, buildConfig());
         setTemplateId(created.templateId);
         setTemplateOwner(created.ownerUsername);
-        setStatusMessage(isSharedTemplate ? "Saved as a new template of your own." : "Template saved.");
+        setStatusMessage(isSharedTemplate ? t("setup.savedAsNewCopy") : t("setup.templateSaved"));
       }
     } catch (err) {
       setError(err.message);
@@ -135,7 +140,7 @@ export function TournamentSetupPage() {
   if (loadingTemplate) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950 text-xl text-slate-500">
-        Loading template...
+        {t("setup.loadingTemplate")}
       </div>
     );
   }
@@ -143,27 +148,28 @@ export function TournamentSetupPage() {
   return (
     <div className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
       <div className="mx-auto max-w-2xl">
-        <Link to="/manager" className="text-sm text-slate-500 hover:text-slate-300">
-          ← Dashboard
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link to="/manager" className="text-sm text-slate-500 hover:text-slate-300">
+            <MirroredGlyph>←</MirroredGlyph> {t("nav.dashboard")}
+          </Link>
+          <LanguageToggle />
+        </div>
         <h1 className="mb-2 mt-2 text-2xl font-bold">
-          {initialTemplateId ? "Edit & Launch Tournament" : "Set Up Tournament"}
+          {initialTemplateId ? t("setup.titleEdit") : t("setup.titleNew")}
         </h1>
         {isSharedTemplate && (
-          <p className="mb-4 text-sm text-sky-400">
-            Shared template (owned by {templateOwner}) — saving will create your own copy rather than editing theirs.
-          </p>
+          <p className="mb-4 text-sm text-sky-400">{t("setup.sharedNotice", { owner: templateOwner })}</p>
         )}
         <div className="mb-4" />
 
         {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
 
         <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
-          <h2 className="mb-4 text-lg font-semibold text-slate-100">Basics</h2>
+          <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("setup.basics")}</h2>
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
               type="text"
-              placeholder="Tournament name (required), e.g. Friday Night Deepstack"
+              placeholder={t("setup.tournamentNamePlaceholder")}
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -171,7 +177,7 @@ export function TournamentSetupPage() {
             />
             <div className="flex items-center gap-2">
               <label htmlFor="startingStack" className="whitespace-nowrap text-sm text-slate-400">
-                Starting stack
+                {t("setup.startingStackLabel")}
               </label>
               <input
                 id="startingStack"
@@ -186,12 +192,12 @@ export function TournamentSetupPage() {
         </div>
 
         <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
-          <h2 className="mb-4 text-lg font-semibold text-slate-100">Blind Structure</h2>
+          <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("setup.blindStructure")}</h2>
           <LevelsEditor levels={levels} onChange={setLevels} />
         </div>
 
         <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
-          <h2 className="mb-4 text-lg font-semibold text-slate-100">Re-buy &amp; Add-on Rules</h2>
+          <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("setup.rebuyAddOnRules")}</h2>
 
           <label className="mb-3 flex items-center gap-3">
             <input
@@ -200,11 +206,11 @@ export function TournamentSetupPage() {
               onChange={(e) => setAllowRebuys(e.target.checked)}
               className="h-5 w-5"
             />
-            <span className="text-sm text-slate-200">Allow Re-buys</span>
+            <span className="text-sm text-slate-200">{t("setup.allowRebuys")}</span>
           </label>
 
           {allowRebuys && (
-            <div className="mb-4 ml-8 flex flex-col gap-2">
+            <div className="mb-4 ms-8 flex flex-col gap-2">
               <label className="flex items-center gap-2 text-sm text-slate-300">
                 <input
                   type="radio"
@@ -212,7 +218,7 @@ export function TournamentSetupPage() {
                   checked={rebuyLimitType === "unlimited"}
                   onChange={() => setRebuyLimitType("unlimited")}
                 />
-                Unlimited
+                {t("setup.unlimited")}
               </label>
               <label className="flex items-center gap-2 text-sm text-slate-300">
                 <input
@@ -221,12 +227,12 @@ export function TournamentSetupPage() {
                   checked={rebuyLimitType === "limited"}
                   onChange={() => setRebuyLimitType("limited")}
                 />
-                Limited
+                {t("setup.limited")}
               </label>
               {rebuyLimitType === "limited" && (
-                <div className="ml-6 flex items-center gap-2">
+                <div className="ms-6 flex items-center gap-2">
                   <label htmlFor="maxRebuys" className="text-sm text-slate-400">
-                    Max re-buys per player
+                    {t("setup.maxRebuysPerPlayer")}
                   </label>
                   <input
                     id="maxRebuys"
@@ -248,7 +254,7 @@ export function TournamentSetupPage() {
               onChange={(e) => setAllowAddOn(e.target.checked)}
               className="h-5 w-5"
             />
-            <span className="text-sm text-slate-200">Allow Add-on</span>
+            <span className="text-sm text-slate-200">{t("setup.allowAddOn")}</span>
           </label>
         </div>
 
@@ -261,7 +267,11 @@ export function TournamentSetupPage() {
             onClick={handleSaveTemplate}
             className="flex-1 rounded-lg bg-slate-800 px-4 py-3 text-base font-semibold text-slate-100 hover:bg-slate-700 disabled:opacity-50"
           >
-            {savingTemplate ? "Saving..." : templateId && !isSharedTemplate ? "Update Template" : "Save as Template"}
+            {savingTemplate
+              ? t("common.saving")
+              : templateId && !isSharedTemplate
+                ? t("setup.updateTemplate")
+                : t("setup.saveAsTemplate")}
           </button>
           <button
             type="button"
@@ -269,7 +279,7 @@ export function TournamentSetupPage() {
             onClick={handleLaunch}
             className="flex-1 rounded-lg bg-emerald-600 px-4 py-3 text-base font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
           >
-            {launching ? "Launching..." : "Launch Tournament Now"}
+            {launching ? t("setup.launching") : t("setup.launchNow")}
           </button>
         </div>
       </div>

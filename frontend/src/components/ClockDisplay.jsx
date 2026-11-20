@@ -1,24 +1,33 @@
+import { useLanguage } from "../context/LanguageContext";
 import { formatChips, formatClock } from "../utils/format";
 
 function BlindPair({ currentLevel, compact }) {
+  const { t, locale } = useLanguage();
+
   if (currentLevel.isBreak) {
     return (
       <div
-        className={`font-bold tracking-wide text-amber-400 ${
+        className={`font-bold uppercase tracking-wide text-amber-400 ${
           compact ? "text-4xl" : "text-[clamp(2.5rem,13vw,6rem)]"
         }`}
       >
-        BREAK
+        {t("clock.break")}
       </div>
     );
   }
 
   return (
-    <div className={`flex items-baseline justify-center ${compact ? "gap-3" : "gap-3 sm:gap-6 md:gap-10"}`}>
+    // dir="ltr" pinned: small/big blind order is numeric data, not prose —
+    // a flex row's child order reverses under the page's RTL direction,
+    // which would otherwise visually swap small and big blind on screen.
+    <div
+      dir="ltr"
+      className={`flex items-baseline justify-center ${compact ? "gap-3" : "gap-3 sm:gap-6 md:gap-10"}`}
+    >
       <span
         className={`font-bold tabular-nums text-white ${compact ? "text-4xl" : "text-[clamp(2.5rem,13vw,6rem)]"}`}
       >
-        {formatChips(currentLevel.smallBlind)}
+        {formatChips(currentLevel.smallBlind, locale)}
       </span>
       <span className={`font-light text-slate-500 ${compact ? "text-2xl" : "text-[clamp(1.5rem,7vw,3.5rem)]"}`}>
         /
@@ -26,25 +35,29 @@ function BlindPair({ currentLevel, compact }) {
       <span
         className={`font-bold tabular-nums text-white ${compact ? "text-4xl" : "text-[clamp(2.5rem,13vw,6rem)]"}`}
       >
-        {formatChips(currentLevel.bigBlind)}
+        {formatChips(currentLevel.bigBlind, locale)}
       </span>
     </div>
   );
 }
 
 function NextLevelPreview({ nextLevel }) {
+  const { t, locale } = useLanguage();
+
   if (!nextLevel) {
-    return <span className="text-slate-400">Final level</span>;
+    return <span className="text-slate-400">{t("clock.finalLevel")}</span>;
   }
 
   if (nextLevel.isBreak) {
-    return <span className="text-amber-400">Break</span>;
+    return <span className="text-amber-400">{t("clock.break")}</span>;
   }
 
   return (
     <span className="text-slate-200">
-      {formatChips(nextLevel.smallBlind)} / {formatChips(nextLevel.bigBlind)}
-      {nextLevel.ante > 0 && <span className="text-slate-400"> (ante {formatChips(nextLevel.ante)})</span>}
+      {formatChips(nextLevel.smallBlind, locale)} / {formatChips(nextLevel.bigBlind, locale)}
+      {nextLevel.ante > 0 && (
+        <span className="text-slate-400"> ({t("clock.ante").toLowerCase()} {formatChips(nextLevel.ante, locale)})</span>
+      )}
     </span>
   );
 }
@@ -57,6 +70,7 @@ function NextLevelPreview({ nextLevel }) {
 // phone held at arm's length and a desktop monitor, rather than jumping at
 // fixed breakpoints.
 export function ClockDisplay({ clockState, totals, compact = false }) {
+  const { t, locale } = useLanguage();
   const { status, currentLevel, nextLevel, remainingMs, totalLevels } = clockState;
   const isPaused = status === "paused";
 
@@ -67,14 +81,14 @@ export function ClockDisplay({ clockState, totals, compact = false }) {
       }`}
     >
       <div className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400 sm:text-lg md:text-xl">
-        Level {currentLevel.level} <span className="text-slate-600">/ {totalLevels}</span>
+        {t("clock.level")} {currentLevel.level} <span className="text-slate-600">/ {totalLevels}</span>
       </div>
 
       <BlindPair currentLevel={currentLevel} compact={compact} />
 
       {!currentLevel.isBreak && currentLevel.ante > 0 && (
         <div className={`font-medium text-slate-400 ${compact ? "text-lg" : "text-[clamp(1.1rem,4vw,1.75rem)]"}`}>
-          Ante <span className="text-slate-200">{formatChips(currentLevel.ante)}</span>
+          {t("clock.ante")} <span className="text-slate-200">{formatChips(currentLevel.ante, locale)}</span>
         </div>
       )}
 
@@ -87,29 +101,32 @@ export function ClockDisplay({ clockState, totals, compact = false }) {
       </div>
 
       {isPaused && (
-        <div className="text-base font-semibold uppercase tracking-widest text-slate-500 sm:text-xl">Paused</div>
+        <div className="text-base font-semibold uppercase tracking-widest text-slate-500 sm:text-xl">
+          {t("clock.paused")}
+        </div>
       )}
 
       <div className="text-base text-slate-400 sm:text-xl">
-        Next: <NextLevelPreview nextLevel={nextLevel} />
+        {t("clock.next")} <NextLevelPreview nextLevel={nextLevel} />
       </div>
 
       {totals && (
         <div className="grid w-full max-w-md grid-cols-2 gap-3 text-sm text-slate-400 sm:flex sm:max-w-none sm:flex-wrap sm:justify-center sm:gap-8 sm:text-lg">
           <div className="rounded-lg bg-slate-900/60 py-2 sm:bg-transparent sm:py-0">
-            Players{" "}
+            {t("clock.players")}{" "}
             <span className="font-semibold text-slate-100">
               {totals.activePlayerCount}/{totals.playerCount}
             </span>
           </div>
           <div className="rounded-lg bg-slate-900/60 py-2 sm:bg-transparent sm:py-0">
-            Avg Stack <span className="font-semibold text-slate-100">{formatChips(totals.averageStack)}</span>
+            {t("clock.avgStack")}{" "}
+            <span className="font-semibold text-slate-100">{formatChips(totals.averageStack, locale)}</span>
           </div>
           <div className="rounded-lg bg-slate-900/60 py-2 sm:bg-transparent sm:py-0">
-            Rebuys <span className="font-semibold text-slate-100">{totals.totalRebuys}</span>
+            {t("clock.rebuys")} <span className="font-semibold text-slate-100">{totals.totalRebuys}</span>
           </div>
           <div className="rounded-lg bg-slate-900/60 py-2 sm:bg-transparent sm:py-0">
-            Add-ons <span className="font-semibold text-slate-100">{totals.totalAddOns}</span>
+            {t("clock.addOns")} <span className="font-semibold text-slate-100">{totals.totalAddOns}</span>
           </div>
         </div>
       )}
