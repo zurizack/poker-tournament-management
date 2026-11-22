@@ -389,8 +389,6 @@ export function TournamentManagerPage() {
               onRemovePlayer={(playerId) => sendManagerAction("manager:removePlayer", { playerId })}
               onEliminatePlayer={(playerId) => sendManagerAction("manager:eliminatePlayer", { playerId })}
               onReinstatePlayer={(playerId) => sendManagerAction("manager:reinstatePlayer", { playerId })}
-              onRecordBuyIn={(playerId) => sendManagerAction("manager:recordBuyIn", { playerId })}
-              onUndoBuyIn={(playerId) => sendManagerAction("manager:undoBuyIn", { playerId })}
               onRecordRebuy={(playerId) => sendManagerAction("manager:recordRebuy", { playerId })}
               onUndoRebuy={(playerId) => sendManagerAction("manager:undoRebuy", { playerId })}
               onRecordAddOn={(playerId) => sendManagerAction("manager:recordAddOn", { playerId })}

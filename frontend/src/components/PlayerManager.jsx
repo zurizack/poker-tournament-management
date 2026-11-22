@@ -34,6 +34,19 @@ function Counter({ label, value, onIncrement, onDecrement, incrementDisabled, hi
   );
 }
 
+// Read-only — every player gets exactly one buy-in when seated (see
+// Tournament.addPlayer) and it can never be incremented afterward; any
+// further entry is tracked as a Re-buy instead. Mirrors Counter's layout
+// without the +/- controls so the row still lines up with Re-buy/Add-on.
+function BuyInBadge({ label, value }) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-900 px-2 py-1 sm:w-auto sm:justify-start sm:gap-1.5 sm:bg-transparent sm:px-0 sm:py-0">
+      <span className="text-sm text-slate-400 sm:w-14 sm:text-xs sm:text-slate-500">{label}</span>
+      <span className="w-6 text-center text-base font-semibold text-slate-100 sm:text-sm">{value}</span>
+    </div>
+  );
+}
+
 function StartingStackControl({ startingStack, onSetStartingStack }) {
   const { t } = useLanguage();
   const [value, setValue] = useState(startingStack);
@@ -95,8 +108,6 @@ export function PlayerManager({
   onRemovePlayer,
   onEliminatePlayer,
   onReinstatePlayer,
-  onRecordBuyIn,
-  onUndoBuyIn,
   onRecordRebuy,
   onUndoRebuy,
   onRecordAddOn,
@@ -217,12 +228,7 @@ export function PlayerManager({
                 </div>
 
                 <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-row sm:items-center sm:gap-4">
-                  <Counter
-                    label={t("player.buyIn")}
-                    value={player.buyIns}
-                    onIncrement={() => onRecordBuyIn(player.id)}
-                    onDecrement={() => onUndoBuyIn(player.id)}
-                  />
+                  <BuyInBadge label={t("player.buyIn")} value={player.buyIns} />
                   {allowRebuys && (
                     <Counter
                       label={t("player.rebuy")}

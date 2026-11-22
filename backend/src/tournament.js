@@ -139,7 +139,9 @@ export class Tournament {
   }
 
   // Name is optional so a manager can seat a player with a single click
-  // ("Quick Add") instead of typing a name every time.
+  // ("Quick Add") instead of typing a name every time. buyIns is always
+  // exactly 1 and stays that way for the player's lifetime — there's no
+  // recordBuyIn/undoBuyIn — any further entry/reload is a re-buy instead.
   addPlayer(name) {
     const trimmed = (name || "").trim();
     const finalName = trimmed || `Player ${++this._quickPlayerCounter}`;
@@ -180,14 +182,6 @@ export class Tournament {
   _adjustCount(playerId, field, delta) {
     const player = this._findPlayer(playerId);
     player[field] = Math.max(0, player[field] + delta);
-  }
-
-  recordBuyIn(playerId) {
-    this._adjustCount(playerId, "buyIns", 1);
-  }
-
-  undoBuyIn(playerId) {
-    this._adjustCount(playerId, "buyIns", -1);
   }
 
   recordRebuy(playerId) {
