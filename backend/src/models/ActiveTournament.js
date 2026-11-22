@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { levelSchema } from "./levelSchema.js";
+import { prizeConfigSchema } from "./prizeConfigSchema.js";
 
 const playerSchema = new mongoose.Schema(
   {
@@ -62,6 +63,7 @@ const activeTournamentSchema = new mongoose.Schema(
     rebuyLimitType: { type: String, enum: ["unlimited", "limited"], default: "unlimited" },
     maxRebuysPerPlayer: { type: Number, default: null },
     allowAddOn: { type: Boolean, default: true },
+    prizeConfig: { type: prizeConfigSchema, default: () => ({}) },
     quickPlayerCounter: { type: Number, default: 0 },
     clock: { type: clockSchema, required: true },
     players: { type: [playerSchema], default: [] },

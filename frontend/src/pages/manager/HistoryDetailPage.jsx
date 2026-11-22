@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import { LevelsEditor } from "../../components/LevelsEditor";
+import { PrizePayoutTable } from "../../components/PrizePayoutTable";
 import { MirroredGlyph } from "../../components/MirroredGlyph";
 import { LanguageToggle } from "../../components/LanguageToggle";
 import { formatDuration, formatDateTime, formatChips } from "../../utils/format";
@@ -20,6 +21,7 @@ const EVENT_LABEL_KEYS = {
   level_reversed: "levelReversed",
   structure_updated: "structureUpdated",
   starting_stack_updated: "stackUpdated",
+  prize_config_updated: "prizeConfigUpdated",
   tournament_ended: "ended",
 };
 
@@ -194,6 +196,17 @@ export function HistoryDetailPage() {
         <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
           <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("setup.blindStructure")}</h2>
           <LevelsEditor levels={history.levels} disabled onChange={() => {}} />
+        </div>
+
+        <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
+          <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("prize.heading")}</h2>
+          <PrizePayoutTable
+            prize={{
+              totalPrizePool: history.finalPrizePool,
+              paidPlaces: history.finalPayouts?.length ?? 0,
+              payouts: history.finalPayouts ?? [],
+            }}
+          />
         </div>
 
         <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">

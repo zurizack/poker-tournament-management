@@ -1,5 +1,6 @@
 import { TournamentHistory } from "./models/TournamentHistory.js";
 import { cloneLevels } from "./levels.js";
+import { computePrizePool } from "./prizePool.js";
 
 // Pairs each "paused" event with the next "resumed" (or, if the tournament
 // was paused when it ended, "tournament_ended") event to attach how long
@@ -30,6 +31,11 @@ export function buildHistorySnapshot(tournament) {
     .filter((e) => e.type === "paused" && e.durationMs)
     .reduce((sum, e) => sum + e.durationMs, 0);
 
+  const { totalPrizePool, payouts } = computePrizePool({
+    totals: { totalBuyIns: totalEntries, totalRebuys, totalAddOns },
+    prizeConfig: tournament.prizeConfig,
+  });
+
   return {
     tournamentId: tournament.id,
     ownerUsername: tournament.ownerUsername,
@@ -41,6 +47,9 @@ export function buildHistorySnapshot(tournament) {
     rebuyLimitType: tournament.rebuyLimitType,
     maxRebuysPerPlayer: tournament.maxRebuysPerPlayer,
     allowAddOn: tournament.allowAddOn,
+    prizeConfig: { ...tournament.prizeConfig },
+    finalPrizePool: totalPrizePool,
+    finalPayouts: payouts,
     startedAt,
     endedAt,
     grossDurationMs,

@@ -1,5 +1,15 @@
 import mongoose from "mongoose";
 import { levelSchema } from "./levelSchema.js";
+import { prizeConfigSchema } from "./prizeConfigSchema.js";
+
+const payoutSchema = new mongoose.Schema(
+  {
+    place: Number,
+    percent: Number,
+    amount: Number,
+  },
+  { _id: false },
+);
 
 const playerSnapshotSchema = new mongoose.Schema(
   {
@@ -49,6 +59,13 @@ const tournamentHistorySchema = new mongoose.Schema(
     rebuyLimitType: String,
     maxRebuysPerPlayer: Number,
     allowAddOn: Boolean,
+    prizeConfig: { type: prizeConfigSchema, default: () => ({}) },
+    // Snapshotted once at archive time (same spirit as finalLevel below) so
+    // the report reflects the payouts as they stood when the tournament
+    // ended, even if prizeConfig's live inputs (buy-in totals etc.) could no
+    // longer reproduce the same numbers later.
+    finalPrizePool: { type: Number, default: 0 },
+    finalPayouts: { type: [payoutSchema], default: [] },
     startedAt: { type: Number, default: null },
     endedAt: { type: Number, required: true },
     // Gross = wall-clock time from start to end. Active = gross minus total

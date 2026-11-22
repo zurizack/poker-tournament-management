@@ -35,6 +35,7 @@ import {
 } from "./playerStore.js";
 import { isGoogleAuthConfigured, getGoogleAuthUrl, getGoogleProfile } from "./googleAuth.js";
 import { normalizeLevels, defaultLevels, cloneLevels } from "./levels.js";
+import { DEFAULT_PRIZE_CONFIG, parsePrizeConfigFields, assertValidPrizeConfig } from "./prizePool.js";
 import { connectDB } from "./db.js";
 
 const PORT = process.env.PORT || 4000;
@@ -134,6 +135,17 @@ function parseRebuyRules(body) {
   return rules;
 }
 
+// Builds a complete, cross-field-validated prizeConfig by merging whatever
+// fields the client sent (via prizePool.parsePrizeConfigFields) onto an
+// existing config — DEFAULT_PRIZE_CONFIG for a brand-new template/tournament,
+// or the live/template's current config for an update.
+function buildPrizeConfig(body, existing = DEFAULT_PRIZE_CONFIG) {
+  const updates = parsePrizeConfigFields(body?.prizeConfig);
+  const merged = { ...existing, ...updates };
+  assertValidPrizeConfig(merged);
+  return merged;
+}
+
 function serializeTemplate(t) {
   return {
     templateId: t._id,
@@ -146,6 +158,7 @@ function serializeTemplate(t) {
     rebuyLimitType: t.rebuyLimitType,
     maxRebuysPerPlayer: t.maxRebuysPerPlayer,
     allowAddOn: t.allowAddOn,
+    prizeConfig: t.prizeConfig,
     source: t.source,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
@@ -160,9 +173,11 @@ app.post("/api/templates", requireAuth, async (req, res) => {
 
   let normalizedLevels;
   let rebuyRules;
+  let prizeConfig;
   try {
     normalizedLevels = normalizeLevels(levels);
     rebuyRules = parseRebuyRules(req.body);
+    prizeConfig = buildPrizeConfig(req.body);
   } catch (error) {
     return res.status(400).json({ error: error.message });
   }
@@ -172,6 +187,7 @@ app.post("/api/templates", requireAuth, async (req, res) => {
     levels: normalizedLevels,
     startingStack,
     ...rebuyRules,
+    prizeConfig,
     source: "manual",
   });
   res.status(201).json(serializeTemplate(template));
@@ -183,7 +199,7 @@ app.get("/api/templates", requireAuth, async (req, res) => {
 });
 
 app.put("/api/templates/:id", requireAuth, async (req, res) => {
-  const { name, levels, startingStack } = req.body || {};
+  const { name, levels, startingStack, prizeConfig } = req.body || {};
   const updates = {};
   if (name !== undefined) updates.name = name;
   if (startingStack !== undefined) updates.startingStack = startingStack;
@@ -198,6 +214,18 @@ app.put("/api/templates/:id", requireAuth, async (req, res) => {
     Object.assign(updates, parseRebuyRules(req.body));
   } catch (error) {
     return res.status(400).json({ error: error.message });
+  }
+
+  if (prizeConfig !== undefined) {
+    const existing = await getTemplate(req.params.id, req.username);
+    if (!existing) {
+      return res.status(404).json({ error: "Template not found" });
+    }
+    try {
+      updates.prizeConfig = buildPrizeConfig(req.body, existing.prizeConfig);
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
   }
 
   const template = await updateTemplate(req.params.id, req.username, updates);
@@ -225,6 +253,7 @@ app.post("/api/tournaments", requireAuth, async (req, res) => {
   const seed = { name: name.trim() };
   try {
     Object.assign(seed, parseRebuyRules(req.body));
+    seed.prizeConfig = buildPrizeConfig(req.body);
   } catch (error) {
     return res.status(400).json({ error: error.message });
   }
@@ -259,6 +288,7 @@ app.post("/api/tournaments", requireAuth, async (req, res) => {
       rebuyLimitType: seed.rebuyLimitType ?? "unlimited",
       maxRebuysPerPlayer: seed.maxRebuysPerPlayer ?? null,
       allowAddOn: seed.allowAddOn ?? true,
+      prizeConfig: seed.prizeConfig,
       source: "quick_launch",
     });
     seed.templateId = autoTemplate._id;
@@ -364,6 +394,9 @@ app.get("/api/history/:id", requireAuth, async (req, res) => {
     rebuyLimitType: history.rebuyLimitType,
     maxRebuysPerPlayer: history.maxRebuysPerPlayer,
     allowAddOn: history.allowAddOn,
+    prizeConfig: history.prizeConfig,
+    finalPrizePool: history.finalPrizePool,
+    finalPayouts: history.finalPayouts,
     startedAt: history.startedAt,
     endedAt: history.endedAt,
     grossDurationMs: history.grossDurationMs,
@@ -616,6 +649,9 @@ io.on("connection", (socket) => {
   onManagerAction("manager:skipLevel", (t) => t.skipLevel());
   onManagerAction("manager:previousLevel", (t) => t.previousLevel());
   onManagerAction("manager:updateStructure", (t, { levels }) => t.updateStructure(levels));
+  onManagerAction("manager:updatePrizeConfig", (t, { prizeConfig }) =>
+    t.updatePrizeConfig(parsePrizeConfigFields(prizeConfig)),
+  );
   onManagerAction(
     "manager:addPlayer",
     (t, { name }) => t.addPlayer(name),

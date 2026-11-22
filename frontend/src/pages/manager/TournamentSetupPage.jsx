@@ -4,12 +4,28 @@ import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import { LevelsEditor } from "../../components/LevelsEditor";
+import { PrizeConfigEditor } from "../../components/PrizeConfigEditor";
 import { MirroredGlyph } from "../../components/MirroredGlyph";
 import { LanguageToggle } from "../../components/LanguageToggle";
 
 // Single source of truth for both "create from scratch" and "launch/edit an
 // existing template" — loading a template just pre-fills this same form.
 const STARTER_LEVELS = [{ smallBlind: 25, bigBlind: 50, ante: 0, durationSeconds: 900, isBreak: false }];
+
+// Mirrors backend/src/prizePool.js's DEFAULT_PRIZE_CONFIG — Setup has no
+// live tournament yet to read defaults from, so a brand-new form seeds here.
+const DEFAULT_PRIZE_CONFIG = {
+  buyInAmount: 0,
+  rebuyAmount: 0,
+  addOnAmount: 0,
+  manualPrizePoolEnabled: false,
+  manualPrizePoolAmount: 0,
+  itmMode: "percentage",
+  itmPercent: 15,
+  itmFixedPlaces: 3,
+  payoutMode: "formula",
+  customPayouts: [],
+};
 
 export function TournamentSetupPage() {
   const { token, username } = useAuth();
@@ -28,6 +44,7 @@ export function TournamentSetupPage() {
   const [rebuyLimitType, setRebuyLimitType] = useState("unlimited");
   const [maxRebuysPerPlayer, setMaxRebuysPerPlayer] = useState(2);
   const [allowAddOn, setAllowAddOn] = useState(true);
+  const [prizeConfig, setPrizeConfig] = useState(DEFAULT_PRIZE_CONFIG);
 
   const [templateId, setTemplateId] = useState(initialTemplateId);
   // Who owns the currently-loaded template — null until it's fetched (or
@@ -57,6 +74,7 @@ export function TournamentSetupPage() {
         setRebuyLimitType(template.rebuyLimitType);
         setMaxRebuysPerPlayer(template.maxRebuysPerPlayer ?? 2);
         setAllowAddOn(template.allowAddOn);
+        setPrizeConfig({ ...DEFAULT_PRIZE_CONFIG, ...template.prizeConfig });
         setTemplateOwner(template.ownerUsername);
       })
       .catch((err) => setError(err.message))
@@ -73,6 +91,13 @@ export function TournamentSetupPage() {
       setError(t("setup.errMaxRebuys"));
       return false;
     }
+    if (prizeConfig.payoutMode === "custom" && prizeConfig.itmMode === "fixed") {
+      const sum = prizeConfig.customPayouts.reduce((total, p) => total + (Number(p) || 0), 0);
+      if (prizeConfig.customPayouts.length > 0 && Math.abs(sum - 100) > 0.01) {
+        setError(t("prize.totalMismatch", { total: Math.round(sum * 100) / 100 }));
+        return false;
+      }
+    }
     return true;
   }
 
@@ -85,6 +110,7 @@ export function TournamentSetupPage() {
       rebuyLimitType,
       maxRebuysPerPlayer: rebuyLimitType === "limited" ? Number(maxRebuysPerPlayer) : null,
       allowAddOn,
+      prizeConfig,
     };
   }
 
@@ -256,6 +282,15 @@ export function TournamentSetupPage() {
             />
             <span className="text-sm text-slate-200">{t("setup.allowAddOn")}</span>
           </label>
+        </div>
+
+        <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
+          <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("prize.heading")}</h2>
+          <PrizeConfigEditor
+            config={prizeConfig}
+            onChange={setPrizeConfig}
+            paidPlaces={prizeConfig.itmMode === "fixed" ? Number(prizeConfig.itmFixedPlaces) || 0 : null}
+          />
         </div>
 
         {statusMessage && <p className="mb-3 text-center text-sm text-emerald-400">{statusMessage}</p>}

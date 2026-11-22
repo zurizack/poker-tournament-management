@@ -8,6 +8,8 @@ import { ControlPanel } from "../../components/ControlPanel";
 import { PlayerManager } from "../../components/PlayerManager";
 import { AdminManager } from "../../components/AdminManager";
 import { LevelsEditor } from "../../components/LevelsEditor";
+import { PrizeConfigEditor } from "../../components/PrizeConfigEditor";
+import { PrizePayoutTable } from "../../components/PrizePayoutTable";
 import { MirroredGlyph } from "../../components/MirroredGlyph";
 import { LanguageToggle } from "../../components/LanguageToggle";
 import { api } from "../../lib/api";
@@ -18,6 +20,7 @@ function TabBar({ activeTab, onChange }) {
   const tabs = [
     { id: "clock", label: t("live.tabClock") },
     { id: "structure", label: t("setup.blindStructure") },
+    { id: "prize", label: t("live.tabPrize") },
     { id: "settings", label: t("live.tabSettings") },
   ];
 
@@ -92,6 +95,60 @@ function BlindStructureTab({ state, sendManagerAction }) {
           {message.text}
         </p>
       )}
+    </div>
+  );
+}
+
+function PrizeTab({ state, sendManagerAction }) {
+  const { t } = useLanguage();
+  const [config, setConfig] = useState(state.prizeConfig);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState(null);
+
+  // Resync if another manager tab saved first, or after our own save pushes
+  // a fresh broadcast back down — same pattern as BlindStructureTab.
+  useEffect(() => {
+    setConfig(state.prizeConfig);
+  }, [state.prizeConfig]);
+
+  async function handleSave() {
+    setSaving(true);
+    setMessage(null);
+    try {
+      await sendManagerAction("manager:updatePrizeConfig", { prizeConfig: config });
+      setMessage({ type: "success", text: t("prize.saved") });
+    } catch (err) {
+      setMessage({ type: "error", text: err.message });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
+        <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("prize.heading")}</h2>
+        <PrizePayoutTable prize={state.prize} />
+      </div>
+
+      <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
+        <PrizeConfigEditor config={config} onChange={setConfig} paidPlaces={state.prize.paidPlaces} />
+
+        <button
+          type="button"
+          disabled={saving}
+          onClick={handleSave}
+          className="mt-6 w-full rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 sm:w-auto"
+        >
+          {saving ? t("common.saving") : t("prize.save")}
+        </button>
+
+        {message && (
+          <p className={`mt-3 text-sm ${message.type === "error" ? "text-red-400" : "text-emerald-400"}`}>
+            {message.text}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -282,7 +339,7 @@ export function TournamentManagerPage() {
         {activeTab === "clock" && (
           <>
             <div className="mb-6 overflow-hidden rounded-xl border border-slate-800">
-              <ClockDisplay clockState={state.clock} totals={state.totals} compact />
+              <ClockDisplay clockState={state.clock} totals={state.totals} prize={state.prize} compact />
               <ControlPanel
                 status={state.clock.status}
                 onStart={() => sendManagerAction("manager:start")}
@@ -319,6 +376,8 @@ export function TournamentManagerPage() {
         {activeTab === "structure" && (
           <BlindStructureTab state={state} sendManagerAction={sendManagerAction} />
         )}
+
+        {activeTab === "prize" && <PrizeTab state={state} sendManagerAction={sendManagerAction} />}
 
         {activeTab === "settings" && (
           <SettingsTab state={state} username={username} ending={ending} onEndTournament={handleEndTournament} />

@@ -45,7 +45,7 @@ export function PlayerView() {
             {t("clockView.ended")}
           </div>
         ) : (
-          <ClockDisplay clockState={state.clock} totals={state.totals} />
+          <ClockDisplay clockState={state.clock} totals={state.totals} prize={state.prize} />
         )
       ) : (
         <div className="flex flex-1 items-center justify-center text-xl text-slate-500">

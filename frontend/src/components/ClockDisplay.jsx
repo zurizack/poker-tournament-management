@@ -1,5 +1,6 @@
 import { useLanguage } from "../context/LanguageContext";
 import { formatChips, formatClock } from "../utils/format";
+import { PrizePayoutTable } from "./PrizePayoutTable";
 
 function BlindPair({ currentLevel, compact }) {
   const { t, locale } = useLanguage();
@@ -69,7 +70,7 @@ function NextLevelPreview({ nextLevel }) {
 // preview. Font sizes use clamp() so the display scales smoothly between a
 // phone held at arm's length and a desktop monitor, rather than jumping at
 // fixed breakpoints.
-export function ClockDisplay({ clockState, totals, compact = false }) {
+export function ClockDisplay({ clockState, totals, prize, compact = false }) {
   const { t, locale } = useLanguage();
   const { status, currentLevel, nextLevel, remainingMs, totalLevels } = clockState;
   const isPaused = status === "paused";
@@ -128,6 +129,12 @@ export function ClockDisplay({ clockState, totals, compact = false }) {
           <div className="rounded-lg bg-slate-900/60 py-2 sm:bg-transparent sm:py-0">
             {t("clock.addOns")} <span className="font-semibold text-slate-100">{totals.totalAddOns}</span>
           </div>
+        </div>
+      )}
+
+      {prize && prize.paidPlaces > 0 && (
+        <div className={`w-full ${compact ? "max-w-md" : "max-w-xl"} rounded-lg bg-slate-900/60 p-3 sm:p-4`}>
+          <PrizePayoutTable prize={prize} compact />
         </div>
       )}
     </div>

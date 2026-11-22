@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { TournamentClock } from "./tournamentClock.js";
 import { cloneLevels, defaultLevels } from "./levels.js";
+import { DEFAULT_PRIZE_CONFIG, computePrizePool, assertValidPrizeConfig } from "./prizePool.js";
 
 export class Tournament {
   constructor(id, ownerUsername) {
@@ -20,6 +21,7 @@ export class Tournament {
     this.rebuyLimitType = "unlimited";
     this.maxRebuysPerPlayer = null;
     this.allowAddOn = true;
+    this.prizeConfig = { ...DEFAULT_PRIZE_CONFIG };
     // Runtime audit trail — clock/admin interventions only (buy-ins/rebuys
     // are already captured in each player's totals, so logging them here
     // too would just duplicate that data as timeline noise). Archived
@@ -218,12 +220,34 @@ export class Tournament {
     this._logEvent("structure_updated", { previousLevelCount, newLevelCount: this.clock.levels.length });
   }
 
+  // `updates` is already field-validated by prizePool.parsePrizeConfigFields
+  // (see index.js) — this only merges it onto the live config and re-checks
+  // cross-field integrity (the custom-percentages-sum-to-100 rule), since
+  // that depends on the merged result, not any single field in isolation.
+  updatePrizeConfig(updates) {
+    const merged = { ...this.prizeConfig, ...updates };
+    assertValidPrizeConfig(merged);
+    const changed = JSON.stringify(merged) !== JSON.stringify(this.prizeConfig);
+    this.prizeConfig = merged;
+    if (changed) this._logEvent("prize_config_updated");
+  }
+
   getState() {
     const totalBuyIns = this.players.reduce((sum, p) => sum + p.buyIns, 0);
     const totalRebuys = this.players.reduce((sum, p) => sum + p.rebuys, 0);
     const totalAddOns = this.players.reduce((sum, p) => sum + p.addOns, 0);
     const activePlayerCount = this.players.filter((p) => p.status === "active").length;
     const totalChips = (totalBuyIns + totalRebuys + totalAddOns) * this.startingStack;
+    const totals = {
+      playerCount: this.players.length,
+      activePlayerCount,
+      totalBuyIns,
+      totalRebuys,
+      totalAddOns,
+      startingStack: this.startingStack,
+      totalChips,
+      averageStack: activePlayerCount > 0 ? Math.round(totalChips / activePlayerCount) : 0,
+    };
 
     return {
       id: this.id,
@@ -236,18 +260,11 @@ export class Tournament {
       rebuyLimitType: this.rebuyLimitType,
       maxRebuysPerPlayer: this.maxRebuysPerPlayer,
       allowAddOn: this.allowAddOn,
+      prizeConfig: { ...this.prizeConfig },
       clock: this.clock.getState(),
       players: this.players,
-      totals: {
-        playerCount: this.players.length,
-        activePlayerCount,
-        totalBuyIns,
-        totalRebuys,
-        totalAddOns,
-        startingStack: this.startingStack,
-        totalChips,
-        averageStack: activePlayerCount > 0 ? Math.round(totalChips / activePlayerCount) : 0,
-      },
+      totals,
+      prize: computePrizePool({ totals, prizeConfig: this.prizeConfig }),
     };
   }
 
@@ -266,6 +283,7 @@ export class Tournament {
       rebuyLimitType: this.rebuyLimitType,
       maxRebuysPerPlayer: this.maxRebuysPerPlayer,
       allowAddOn: this.allowAddOn,
+      prizeConfig: { ...this.prizeConfig },
       quickPlayerCounter: this._quickPlayerCounter,
       clock: this.clock.toPersistableState(),
       players: this.players.map((player) => ({ ...player })),
@@ -287,6 +305,7 @@ export class Tournament {
     tournament.rebuyLimitType = doc.rebuyLimitType ?? "unlimited";
     tournament.maxRebuysPerPlayer = doc.maxRebuysPerPlayer ?? null;
     tournament.allowAddOn = doc.allowAddOn ?? true;
+    tournament.prizeConfig = { ...DEFAULT_PRIZE_CONFIG, ...(doc.prizeConfig ?? {}) };
     tournament._quickPlayerCounter = doc.quickPlayerCounter ?? 0;
     tournament.players = doc.players.map((player) => ({ ...player }));
     tournament.clock = TournamentClock.fromPersistedState(doc.clock);

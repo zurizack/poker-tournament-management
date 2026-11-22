@@ -7,7 +7,7 @@ import { TournamentTemplate } from "./models/TournamentTemplate.js";
 // after a separate fetch) so ownership enforcement is atomic.
 export async function createTemplate(
   ownerUsername,
-  { name, levels, startingStack, allowRebuys, rebuyLimitType, maxRebuysPerPlayer, allowAddOn, source },
+  { name, levels, startingStack, allowRebuys, rebuyLimitType, maxRebuysPerPlayer, allowAddOn, prizeConfig, source },
 ) {
   return TournamentTemplate.create({
     ownerUsername,
@@ -18,6 +18,7 @@ export async function createTemplate(
     rebuyLimitType,
     maxRebuysPerPlayer,
     allowAddOn,
+    prizeConfig,
     source,
   });
 }
