@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
 
 function toRow(level) {
@@ -32,8 +32,16 @@ export function LevelsEditor({ levels, disabled, onChange }) {
   const [rows, setRows] = useState(() => levels.map(toRow));
   const [selected, setSelected] = useState(() => new Set());
   const [bulkMinutes, setBulkMinutes] = useState("");
+  // Both callers (TournamentSetupPage/BlindStructureTab) wire onChange
+  // straight to their own setLevels, so every edit round-trips: emit() ->
+  // parent setLevels -> same array back down as the `levels` prop. Without
+  // this ref, the effect below couldn't tell that echo apart from the
+  // caller genuinely swapping in a different structure, and would wipe
+  // `selected` (and reset `rows`) on every single keystroke.
+  const lastEmittedRef = useRef(null);
 
   useEffect(() => {
+    if (levels === lastEmittedRef.current) return;
     setRows(levels.map(toRow));
     setSelected(new Set());
     // Only re-sync when the caller swaps in a different `levels` array
@@ -43,10 +51,19 @@ export function LevelsEditor({ levels, disabled, onChange }) {
 
   function emit(nextRows) {
     setRows(nextRows);
-    onChange(nextRows.map(toLevelPayload));
+    const payload = nextRows.map(toLevelPayload);
+    lastEmittedRef.current = payload;
+    onChange(payload);
   }
 
+  // Editing a selected row's duration while multiple rows are selected
+  // updates all of them together, same as the bulk-edit bar — any other
+  // field (blinds/ante/break) still only ever touches the one row being edited.
   function updateRow(index, field, value) {
+    if (field === "durationMinutes" && selected.size > 1 && selected.has(index)) {
+      emit(rows.map((row, i) => (selected.has(i) ? { ...row, durationMinutes: value } : row)));
+      return;
+    }
     emit(rows.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
   }
 
@@ -152,7 +169,10 @@ export function LevelsEditor({ levels, disabled, onChange }) {
           </thead>
           <tbody>
             {rows.map((row, index) => (
-              <tr key={index} className="border-t border-slate-800">
+              <tr
+                key={index}
+                className={`border-t border-slate-800 ${selected.has(index) ? "bg-emerald-950/40" : ""}`}
+              >
                 {!disabled && (
                   <td className="px-2 py-2 text-center">
                     <input
