@@ -21,10 +21,16 @@ export const DEFAULT_PRIZE_CONFIG = Object.freeze({
 
 // Per-entry dollar amounts — set once at setup/template time alongside the
 // other core tournament fields, read here only to compute the live pool.
+// customRebuyPricesEnabled/rebuyPricesByIndex/rebuyCutoffLevel are the re-buy
+// rule extensions: a per-index override of the flat rebuyAmount, and the
+// last level re-buys are still allowed through (null = no cutoff).
 export const DEFAULT_ENTRY_FEES = Object.freeze({
   buyInAmount: 0,
   rebuyAmount: 0,
   addOnAmount: 0,
+  customRebuyPricesEnabled: false,
+  rebuyPricesByIndex: [],
+  rebuyCutoffLevel: null,
 });
 
 // These three field counts are small, fixed, real-world standard home-game
@@ -90,19 +96,47 @@ export function resolvePayoutPercentages({ payoutMode, customPayouts, paidPlaces
   return generateFormulaPayouts(paidPlaces);
 }
 
+// Price of a player's Nth re-buy (1-indexed): the custom per-index price
+// when enabled and that slot is actually defined, else the flat rebuyAmount
+// fallback — so a partially-filled rebuyPricesByIndex (e.g. only re-buy #1
+// customized) still prices the rest at the standard rate.
+export function rebuyPriceForIndex(rebuyNumber, fees) {
+  if (fees.customRebuyPricesEnabled) {
+    const custom = fees.rebuyPricesByIndex?.[rebuyNumber - 1];
+    if (custom !== undefined && custom !== null && Number.isFinite(Number(custom))) {
+      return Number(custom);
+    }
+  }
+  return fees.rebuyAmount;
+}
+
+// Summed per player (not totalRebuys * rebuyAmount) because once per-index
+// pricing is enabled, two players with the same re-buy *count* can owe
+// different amounts depending on which indices they each hit.
+export function totalRebuyMoney(players, fees) {
+  let sum = 0;
+  for (const player of players) {
+    for (let i = 1; i <= (player.rebuys || 0); i++) {
+      sum += rebuyPriceForIndex(i, fees);
+    }
+  }
+  return sum;
+}
+
 // `totals` is the same { totalBuyIns, totalRebuys, totalAddOns } shape
 // Tournament.getState() already computes — "total entries" for ITM purposes
 // is totalBuyIns (re-buys/add-ons add money, not new entries into the field).
-// `entryFees` is the tournament's own { buyInAmount, rebuyAmount, addOnAmount }
-// (core data, not part of prizeConfig) — the live pool is always this
-// automatic calculation, with no manual override.
-export function computePrizePool({ totals, entryFees, prizeConfig }) {
+// `entryFees` is the tournament's own { buyInAmount, rebuyAmount, addOnAmount,
+// ... } (core data, not part of prizeConfig) — the live pool is always this
+// automatic calculation, with no manual override. `players` (each with a
+// `.rebuys` count) is needed to apply per-index re-buy pricing correctly.
+export function computePrizePool({ totals, entryFees, prizeConfig, players = [] }) {
   const config = { ...DEFAULT_PRIZE_CONFIG, ...prizeConfig };
   const fees = { ...DEFAULT_ENTRY_FEES, ...entryFees };
   const totalEntries = totals.totalBuyIns;
 
   const totalPrizePool =
-    totals.totalBuyIns * fees.buyInAmount + totals.totalRebuys * fees.rebuyAmount + totals.totalAddOns * fees.addOnAmount;
+    totals.totalBuyIns * fees.buyInAmount + totalRebuyMoney(players, fees) + totals.totalAddOns * fees.addOnAmount;
 
   const paidPlaces = computePaidPlaces(totalEntries, config);
   const percentages = resolvePayoutPercentages({
@@ -128,15 +162,43 @@ function nonNegativeNumber(value, label) {
   return n;
 }
 
-// Parses/coerces whatever subset of { buyInAmount, rebuyAmount, addOnAmount }
-// appear in `body` — these are core tournament fields (same partial-update
-// contract as parseRebuyRules), not part of prizeConfig.
+// Parses/coerces whatever subset of { buyInAmount, rebuyAmount, addOnAmount,
+// customRebuyPricesEnabled, rebuyPricesByIndex, rebuyCutoffLevel } appear in
+// `body` — these are core tournament fields (same partial-update contract as
+// parseRebuyRules), not part of prizeConfig. Shared by both the create/update
+// HTTP routes and the live manager:updateEntryFees socket action.
 export function parseEntryFeeFields(body) {
-  const { buyInAmount, rebuyAmount, addOnAmount } = body || {};
+  const { buyInAmount, rebuyAmount, addOnAmount, customRebuyPricesEnabled, rebuyPricesByIndex, rebuyCutoffLevel } =
+    body || {};
   const updates = {};
   if (buyInAmount !== undefined) updates.buyInAmount = nonNegativeNumber(buyInAmount, "Buy-in amount");
   if (rebuyAmount !== undefined) updates.rebuyAmount = nonNegativeNumber(rebuyAmount, "Re-buy amount");
   if (addOnAmount !== undefined) updates.addOnAmount = nonNegativeNumber(addOnAmount, "Add-on amount");
+
+  if (customRebuyPricesEnabled !== undefined) {
+    updates.customRebuyPricesEnabled = Boolean(customRebuyPricesEnabled);
+  }
+  if (rebuyPricesByIndex !== undefined) {
+    if (
+      !Array.isArray(rebuyPricesByIndex) ||
+      rebuyPricesByIndex.some((p) => !Number.isFinite(Number(p)) || Number(p) < 0)
+    ) {
+      throw new Error("rebuyPricesByIndex must be an array of non-negative numbers");
+    }
+    updates.rebuyPricesByIndex = rebuyPricesByIndex.map((p) => Number(p));
+  }
+  if (rebuyCutoffLevel !== undefined) {
+    if (rebuyCutoffLevel === null) {
+      updates.rebuyCutoffLevel = null;
+    } else {
+      const n = Number(rebuyCutoffLevel);
+      if (!Number.isInteger(n) || n < 1) {
+        throw new Error("rebuyCutoffLevel must be a positive integer or null");
+      }
+      updates.rebuyCutoffLevel = n;
+    }
+  }
+
   return updates;
 }
 

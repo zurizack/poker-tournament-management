@@ -41,6 +41,9 @@ export async function createTournament(ownerUsername, seed = {}) {
   if (seed.buyInAmount !== undefined) tournament.buyInAmount = seed.buyInAmount;
   if (seed.rebuyAmount !== undefined) tournament.rebuyAmount = seed.rebuyAmount;
   if (seed.addOnAmount !== undefined) tournament.addOnAmount = seed.addOnAmount;
+  if (seed.customRebuyPricesEnabled !== undefined) tournament.customRebuyPricesEnabled = seed.customRebuyPricesEnabled;
+  if (seed.rebuyPricesByIndex !== undefined) tournament.rebuyPricesByIndex = seed.rebuyPricesByIndex;
+  if (seed.rebuyCutoffLevel !== undefined) tournament.rebuyCutoffLevel = seed.rebuyCutoffLevel;
   if (seed.prizeConfig !== undefined) tournament.updatePrizeConfig(seed.prizeConfig);
 
   tournaments.set(id, tournament);

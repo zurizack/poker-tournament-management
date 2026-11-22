@@ -62,6 +62,9 @@ const tournamentHistorySchema = new mongoose.Schema(
     buyInAmount: { type: Number, default: 0 },
     rebuyAmount: { type: Number, default: 0 },
     addOnAmount: { type: Number, default: 0 },
+    rebuyCutoffLevel: { type: Number, default: null },
+    customRebuyPricesEnabled: { type: Boolean, default: false },
+    rebuyPricesByIndex: { type: [Number], default: [] },
     prizeConfig: { type: prizeConfigSchema, default: () => ({}) },
     // Snapshotted once at archive time (same spirit as finalLevel below) so
     // the report reflects the payouts as they stood when the tournament

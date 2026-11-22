@@ -138,6 +138,11 @@ function parseRebuyRules(body) {
     rules.rebuyLimitType = rebuyLimitType;
     rules.maxRebuysPerPlayer = rebuyLimitType === "limited" ? maxRebuysPerPlayer : null;
   }
+  // Soft cross-check only — only enforced when the same request also sends
+  // the blind structure (levels isn't itself a parseRebuyRules concern).
+  if (rules.rebuyCutoffLevel != null && Array.isArray(body?.levels) && rules.rebuyCutoffLevel > body.levels.length) {
+    throw new Error(`rebuyCutoffLevel can't exceed the number of configured levels (${body.levels.length})`);
+  }
   return rules;
 }
 
@@ -167,6 +172,9 @@ function serializeTemplate(t) {
     buyInAmount: t.buyInAmount,
     rebuyAmount: t.rebuyAmount,
     addOnAmount: t.addOnAmount,
+    customRebuyPricesEnabled: t.customRebuyPricesEnabled,
+    rebuyPricesByIndex: t.rebuyPricesByIndex,
+    rebuyCutoffLevel: t.rebuyCutoffLevel,
     prizeConfig: t.prizeConfig,
     source: t.source,
     createdAt: t.createdAt,
@@ -300,6 +308,9 @@ app.post("/api/tournaments", requireAuth, async (req, res) => {
       buyInAmount: seed.buyInAmount ?? 0,
       rebuyAmount: seed.rebuyAmount ?? 0,
       addOnAmount: seed.addOnAmount ?? 0,
+      customRebuyPricesEnabled: seed.customRebuyPricesEnabled ?? false,
+      rebuyPricesByIndex: seed.rebuyPricesByIndex ?? [],
+      rebuyCutoffLevel: seed.rebuyCutoffLevel ?? null,
       prizeConfig: seed.prizeConfig,
       source: "quick_launch",
     });
@@ -409,6 +420,9 @@ app.get("/api/history/:id", requireAuth, async (req, res) => {
     buyInAmount: history.buyInAmount,
     rebuyAmount: history.rebuyAmount,
     addOnAmount: history.addOnAmount,
+    customRebuyPricesEnabled: history.customRebuyPricesEnabled,
+    rebuyPricesByIndex: history.rebuyPricesByIndex,
+    rebuyCutoffLevel: history.rebuyCutoffLevel,
     prizeConfig: history.prizeConfig,
     finalPrizePool: history.finalPrizePool,
     finalPayouts: history.finalPayouts,

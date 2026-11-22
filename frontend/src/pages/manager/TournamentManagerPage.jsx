@@ -10,6 +10,7 @@ import { AdminManager } from "../../components/AdminManager";
 import { LevelsEditor } from "../../components/LevelsEditor";
 import { PrizeConfigEditor } from "../../components/PrizeConfigEditor";
 import { PrizePayoutTable } from "../../components/PrizePayoutTable";
+import { RebuyPriceEditor } from "../../components/RebuyPriceEditor";
 import { MirroredGlyph } from "../../components/MirroredGlyph";
 import { LanguageToggle } from "../../components/LanguageToggle";
 import { api } from "../../lib/api";
@@ -111,6 +112,10 @@ function EntryFeesEditor({ state, sendManagerAction }) {
   const [buyInAmount, setBuyInAmount] = useState(state.buyInAmount);
   const [rebuyAmount, setRebuyAmount] = useState(state.rebuyAmount);
   const [addOnAmount, setAddOnAmount] = useState(state.addOnAmount);
+  // null = no cutoff — re-buys stay allowed for the whole tournament.
+  const [rebuyCutoffLevel, setRebuyCutoffLevel] = useState(state.rebuyCutoffLevel);
+  const [customRebuyPricesEnabled, setCustomRebuyPricesEnabled] = useState(state.customRebuyPricesEnabled);
+  const [rebuyPricesByIndex, setRebuyPricesByIndex] = useState(state.rebuyPricesByIndex);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
 
@@ -118,7 +123,17 @@ function EntryFeesEditor({ state, sendManagerAction }) {
     setBuyInAmount(state.buyInAmount);
     setRebuyAmount(state.rebuyAmount);
     setAddOnAmount(state.addOnAmount);
-  }, [state.buyInAmount, state.rebuyAmount, state.addOnAmount]);
+    setRebuyCutoffLevel(state.rebuyCutoffLevel);
+    setCustomRebuyPricesEnabled(state.customRebuyPricesEnabled);
+    setRebuyPricesByIndex(state.rebuyPricesByIndex);
+  }, [
+    state.buyInAmount,
+    state.rebuyAmount,
+    state.addOnAmount,
+    state.rebuyCutoffLevel,
+    state.customRebuyPricesEnabled,
+    state.rebuyPricesByIndex,
+  ]);
 
   async function handleSave() {
     setSaving(true);
@@ -128,6 +143,9 @@ function EntryFeesEditor({ state, sendManagerAction }) {
         buyInAmount: Number(buyInAmount) || 0,
         rebuyAmount: Number(rebuyAmount) || 0,
         addOnAmount: Number(addOnAmount) || 0,
+        rebuyCutoffLevel: rebuyCutoffLevel == null ? null : Number(rebuyCutoffLevel),
+        customRebuyPricesEnabled,
+        rebuyPricesByIndex: rebuyPricesByIndex.map((p) => Number(p) || 0),
       });
       setMessage({ type: "success", text: t("prize.entryFeesSaved") });
     } catch (err) {
@@ -174,6 +192,53 @@ function EntryFeesEditor({ state, sendManagerAction }) {
           />
         </label>
       </div>
+
+      {state.rebuyLimitType === "limited" && (
+        <div className="mt-4">
+          <RebuyPriceEditor
+            count={state.maxRebuysPerPlayer || 0}
+            fallbackAmount={Number(rebuyAmount) || 0}
+            enabled={customRebuyPricesEnabled}
+            onToggleEnabled={setCustomRebuyPricesEnabled}
+            prices={rebuyPricesByIndex}
+            onChangePrices={setRebuyPricesByIndex}
+          />
+        </div>
+      )}
+
+      <div className="mt-4 flex flex-col gap-2">
+        <span className="text-sm text-slate-400">{t("setup.rebuyCutoffHeading")}</span>
+        <label className="flex items-center gap-2 text-sm text-slate-300">
+          <input
+            type="radio"
+            name="liveRebuyCutoff"
+            checked={rebuyCutoffLevel == null}
+            onChange={() => setRebuyCutoffLevel(null)}
+          />
+          {t("setup.noCutoff")}
+        </label>
+        <label className="flex items-center gap-2 text-sm text-slate-300">
+          <input
+            type="radio"
+            name="liveRebuyCutoff"
+            checked={rebuyCutoffLevel != null}
+            onChange={() => setRebuyCutoffLevel(rebuyCutoffLevel ?? state.clock.totalLevels)}
+          />
+          {t("setup.cutoffAtLevel")}
+        </label>
+        {rebuyCutoffLevel != null && (
+          <div className="ms-6">
+            <input
+              type="number"
+              min="1"
+              value={rebuyCutoffLevel}
+              onChange={(e) => setRebuyCutoffLevel(e.target.value)}
+              className="w-20 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100"
+            />
+          </div>
+        )}
+      </div>
+
       <button
         type="button"
         disabled={saving}
@@ -270,6 +335,22 @@ function SettingsTab({ state, username, ending, onEndTournament }) {
             <dt className="text-slate-500">{t("prize.rebuyAmountLabel")}</dt>
             <dd className="text-slate-200">{formatChips(state.rebuyAmount, locale)}</dd>
           </div>
+          <div>
+            <dt className="text-slate-500">{t("setup.rebuyCutoffHeading")}</dt>
+            <dd className="text-slate-200">
+              {state.rebuyCutoffLevel == null
+                ? t("setup.noCutoff")
+                : t("live.cutoffThroughLevel", { level: state.rebuyCutoffLevel })}
+            </dd>
+          </div>
+          {state.rebuyLimitType === "limited" && (
+            <div>
+              <dt className="text-slate-500">{t("live.customRebuyPricingLabel")}</dt>
+              <dd className="text-slate-200">
+                {state.customRebuyPricesEnabled ? t("live.allowed") : t("live.notAllowed")}
+              </dd>
+            </div>
+          )}
           <div>
             <dt className="text-slate-500">{t("prize.addOnAmountLabel")}</dt>
             <dd className="text-slate-200">{formatChips(state.addOnAmount, locale)}</dd>
@@ -463,6 +544,8 @@ export function TournamentManagerPage() {
               allowRebuys={state.allowRebuys}
               rebuyLimitType={state.rebuyLimitType}
               maxRebuysPerPlayer={state.maxRebuysPerPlayer}
+              rebuyCutoffLevel={state.rebuyCutoffLevel}
+              currentLevelIndex={state.clock.currentLevelIndex}
               allowAddOn={state.allowAddOn}
               onSetStartingStack={(amount) => sendManagerAction("manager:setStartingStack", { amount })}
               onAddPlayer={(name) => sendManagerAction("manager:addPlayer", { name })}

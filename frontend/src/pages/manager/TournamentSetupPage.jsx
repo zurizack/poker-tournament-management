@@ -5,6 +5,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import { LevelsEditor } from "../../components/LevelsEditor";
 import { PrizeConfigEditor } from "../../components/PrizeConfigEditor";
+import { RebuyPriceEditor } from "../../components/RebuyPriceEditor";
 import { MirroredGlyph } from "../../components/MirroredGlyph";
 import { LanguageToggle } from "../../components/LanguageToggle";
 
@@ -44,6 +45,10 @@ export function TournamentSetupPage() {
   const [buyInAmount, setBuyInAmount] = useState(0);
   const [rebuyAmount, setRebuyAmount] = useState(0);
   const [addOnAmount, setAddOnAmount] = useState(0);
+  // null = no cutoff — re-buys stay allowed for the whole tournament.
+  const [rebuyCutoffLevel, setRebuyCutoffLevel] = useState(null);
+  const [customRebuyPricesEnabled, setCustomRebuyPricesEnabled] = useState(false);
+  const [rebuyPricesByIndex, setRebuyPricesByIndex] = useState([]);
   const [prizeConfig, setPrizeConfig] = useState(DEFAULT_PRIZE_CONFIG);
 
   const [templateId, setTemplateId] = useState(initialTemplateId);
@@ -77,6 +82,9 @@ export function TournamentSetupPage() {
         setBuyInAmount(template.buyInAmount ?? 0);
         setRebuyAmount(template.rebuyAmount ?? 0);
         setAddOnAmount(template.addOnAmount ?? 0);
+        setRebuyCutoffLevel(template.rebuyCutoffLevel ?? null);
+        setCustomRebuyPricesEnabled(template.customRebuyPricesEnabled ?? false);
+        setRebuyPricesByIndex(template.rebuyPricesByIndex ?? []);
         setPrizeConfig({ ...DEFAULT_PRIZE_CONFIG, ...template.prizeConfig });
         setTemplateOwner(template.ownerUsername);
       })
@@ -92,6 +100,10 @@ export function TournamentSetupPage() {
     }
     if (rebuyLimitType === "limited" && !(Number(maxRebuysPerPlayer) > 0)) {
       setError(t("setup.errMaxRebuys"));
+      return false;
+    }
+    if (rebuyCutoffLevel != null && Number(rebuyCutoffLevel) > levels.length) {
+      setError(t("setup.errCutoffExceedsLevels", { count: levels.length }));
       return false;
     }
     if (prizeConfig.payoutMode === "custom" && prizeConfig.itmMode === "fixed") {
@@ -116,6 +128,9 @@ export function TournamentSetupPage() {
       buyInAmount: Number(buyInAmount) || 0,
       rebuyAmount: Number(rebuyAmount) || 0,
       addOnAmount: Number(addOnAmount) || 0,
+      rebuyCutoffLevel: rebuyCutoffLevel == null ? null : Number(rebuyCutoffLevel),
+      customRebuyPricesEnabled,
+      rebuyPricesByIndex: rebuyPricesByIndex.map((p) => Number(p) || 0),
       prizeConfig,
     };
   }
@@ -297,6 +312,50 @@ export function TournamentSetupPage() {
                   onChange={(e) => setRebuyAmount(e.target.value)}
                   className="w-20 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100"
                 />
+              </div>
+
+              {rebuyLimitType === "limited" && (
+                <RebuyPriceEditor
+                  count={Number(maxRebuysPerPlayer) || 0}
+                  fallbackAmount={Number(rebuyAmount) || 0}
+                  enabled={customRebuyPricesEnabled}
+                  onToggleEnabled={setCustomRebuyPricesEnabled}
+                  prices={rebuyPricesByIndex}
+                  onChangePrices={setRebuyPricesByIndex}
+                />
+              )}
+
+              <div className="mt-2 flex flex-col gap-2">
+                <span className="text-sm text-slate-400">{t("setup.rebuyCutoffHeading")}</span>
+                <label className="flex items-center gap-2 text-sm text-slate-300">
+                  <input
+                    type="radio"
+                    name="rebuyCutoff"
+                    checked={rebuyCutoffLevel == null}
+                    onChange={() => setRebuyCutoffLevel(null)}
+                  />
+                  {t("setup.noCutoff")}
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-300">
+                  <input
+                    type="radio"
+                    name="rebuyCutoff"
+                    checked={rebuyCutoffLevel != null}
+                    onChange={() => setRebuyCutoffLevel(rebuyCutoffLevel ?? levels.length)}
+                  />
+                  {t("setup.cutoffAtLevel")}
+                </label>
+                {rebuyCutoffLevel != null && (
+                  <div className="ms-6">
+                    <input
+                      type="number"
+                      min="1"
+                      value={rebuyCutoffLevel}
+                      onChange={(e) => setRebuyCutoffLevel(e.target.value)}
+                      className="w-20 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}

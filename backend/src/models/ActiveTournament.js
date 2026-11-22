@@ -66,6 +66,14 @@ const activeTournamentSchema = new mongoose.Schema(
     buyInAmount: { type: Number, default: 0 },
     rebuyAmount: { type: Number, default: 0 },
     addOnAmount: { type: Number, default: 0 },
+    // Null = no cutoff — re-buys allowed through the full tournament. A set
+    // value is the last level (1-indexed) where re-buys are still permitted.
+    rebuyCutoffLevel: { type: Number, default: null },
+    // When enabled, a player's Nth re-buy charges rebuyPricesByIndex[N-1]
+    // instead of the flat rebuyAmount, if that slot is defined — see
+    // prizePool.rebuyPriceForIndex. Only meaningful alongside limited re-buys.
+    customRebuyPricesEnabled: { type: Boolean, default: false },
+    rebuyPricesByIndex: { type: [Number], default: [] },
     prizeConfig: { type: prizeConfigSchema, default: () => ({}) },
     quickPlayerCounter: { type: Number, default: 0 },
     clock: { type: clockSchema, required: true },

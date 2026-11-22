@@ -102,6 +102,8 @@ export function PlayerManager({
   allowRebuys,
   rebuyLimitType,
   maxRebuysPerPlayer,
+  rebuyCutoffLevel,
+  currentLevelIndex,
   allowAddOn,
   onSetStartingStack,
   onAddPlayer,
@@ -117,6 +119,9 @@ export function PlayerManager({
   const [namedMode, setNamedMode] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState(null);
+  // rebuyCutoffLevel is 1-indexed ("allowed through level X"); currentLevelIndex
+  // is 0-indexed — mirrors Tournament.recordRebuy's own check on the backend.
+  const rebuyCutoffReached = rebuyCutoffLevel != null && currentLevelIndex >= rebuyCutoffLevel;
 
   async function handleAddNamed(event) {
     event.preventDefault();
@@ -147,6 +152,12 @@ export function PlayerManager({
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
       <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("player.heading")}</h2>
+
+      {allowRebuys && rebuyCutoffReached && (
+        <p className="mb-4 text-sm font-semibold text-amber-400">
+          {t("player.rebuyCutoffReached", { level: rebuyCutoffLevel })}
+        </p>
+      )}
 
       <StartingStackControl startingStack={startingStack} onSetStartingStack={onSetStartingStack} />
 
@@ -234,7 +245,9 @@ export function PlayerManager({
                       label={t("player.rebuy")}
                       value={player.rebuys}
                       hint={rebuyLimitType === "limited" ? `/${maxRebuysPerPlayer}` : null}
-                      incrementDisabled={rebuyLimitType === "limited" && player.rebuys >= maxRebuysPerPlayer}
+                      incrementDisabled={
+                        (rebuyLimitType === "limited" && player.rebuys >= maxRebuysPerPlayer) || rebuyCutoffReached
+                      }
                       onIncrement={() => onRecordRebuy(player.id)}
                       onDecrement={() => onUndoRebuy(player.id)}
                     />

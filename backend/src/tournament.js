@@ -24,6 +24,9 @@ export class Tournament {
     this.buyInAmount = DEFAULT_ENTRY_FEES.buyInAmount;
     this.rebuyAmount = DEFAULT_ENTRY_FEES.rebuyAmount;
     this.addOnAmount = DEFAULT_ENTRY_FEES.addOnAmount;
+    this.customRebuyPricesEnabled = DEFAULT_ENTRY_FEES.customRebuyPricesEnabled;
+    this.rebuyPricesByIndex = [...DEFAULT_ENTRY_FEES.rebuyPricesByIndex];
+    this.rebuyCutoffLevel = DEFAULT_ENTRY_FEES.rebuyCutoffLevel;
     this.prizeConfig = { ...DEFAULT_PRIZE_CONFIG };
     // Runtime audit trail — clock/admin interventions only (buy-ins/rebuys
     // are already captured in each player's totals, so logging them here
@@ -188,6 +191,12 @@ export class Tournament {
     if (!this.allowRebuys) {
       throw new Error("Rebuys are not allowed for this tournament");
     }
+    // rebuyCutoffLevel is 1-indexed ("allowed through level X"); clock's
+    // currentLevelIndex is 0-indexed, so level X is index X-1 — re-buys are
+    // blocked once the index reaches X (i.e. level X+1 or later).
+    if (this.rebuyCutoffLevel != null && this.clock.currentLevelIndex >= this.rebuyCutoffLevel) {
+      throw new Error(`Rebuys are no longer allowed past level ${this.rebuyCutoffLevel}`);
+    }
     if (this.rebuyLimitType === "limited" && this._findPlayer(playerId).rebuys >= this.maxRebuysPerPlayer) {
       throw new Error("Rebuy limit reached");
     }
@@ -239,6 +248,11 @@ export class Tournament {
     if (updates.buyInAmount !== undefined) this.buyInAmount = updates.buyInAmount;
     if (updates.rebuyAmount !== undefined) this.rebuyAmount = updates.rebuyAmount;
     if (updates.addOnAmount !== undefined) this.addOnAmount = updates.addOnAmount;
+    if (updates.customRebuyPricesEnabled !== undefined) {
+      this.customRebuyPricesEnabled = updates.customRebuyPricesEnabled;
+    }
+    if (updates.rebuyPricesByIndex !== undefined) this.rebuyPricesByIndex = updates.rebuyPricesByIndex;
+    if (updates.rebuyCutoffLevel !== undefined) this.rebuyCutoffLevel = updates.rebuyCutoffLevel;
     if (Object.keys(updates).length > 0) this._logEvent("entry_fees_updated");
   }
 
@@ -273,14 +287,24 @@ export class Tournament {
       buyInAmount: this.buyInAmount,
       rebuyAmount: this.rebuyAmount,
       addOnAmount: this.addOnAmount,
+      customRebuyPricesEnabled: this.customRebuyPricesEnabled,
+      rebuyPricesByIndex: [...this.rebuyPricesByIndex],
+      rebuyCutoffLevel: this.rebuyCutoffLevel,
       prizeConfig: { ...this.prizeConfig },
       clock: this.clock.getState(),
       players: this.players,
       totals,
       prize: computePrizePool({
         totals,
-        entryFees: { buyInAmount: this.buyInAmount, rebuyAmount: this.rebuyAmount, addOnAmount: this.addOnAmount },
+        entryFees: {
+          buyInAmount: this.buyInAmount,
+          rebuyAmount: this.rebuyAmount,
+          addOnAmount: this.addOnAmount,
+          customRebuyPricesEnabled: this.customRebuyPricesEnabled,
+          rebuyPricesByIndex: this.rebuyPricesByIndex,
+        },
         prizeConfig: this.prizeConfig,
+        players: this.players,
       }),
     };
   }
@@ -303,6 +327,9 @@ export class Tournament {
       buyInAmount: this.buyInAmount,
       rebuyAmount: this.rebuyAmount,
       addOnAmount: this.addOnAmount,
+      customRebuyPricesEnabled: this.customRebuyPricesEnabled,
+      rebuyPricesByIndex: [...this.rebuyPricesByIndex],
+      rebuyCutoffLevel: this.rebuyCutoffLevel,
       prizeConfig: { ...this.prizeConfig },
       quickPlayerCounter: this._quickPlayerCounter,
       clock: this.clock.toPersistableState(),
@@ -328,6 +355,9 @@ export class Tournament {
     tournament.buyInAmount = doc.buyInAmount ?? DEFAULT_ENTRY_FEES.buyInAmount;
     tournament.rebuyAmount = doc.rebuyAmount ?? DEFAULT_ENTRY_FEES.rebuyAmount;
     tournament.addOnAmount = doc.addOnAmount ?? DEFAULT_ENTRY_FEES.addOnAmount;
+    tournament.customRebuyPricesEnabled = doc.customRebuyPricesEnabled ?? DEFAULT_ENTRY_FEES.customRebuyPricesEnabled;
+    tournament.rebuyPricesByIndex = doc.rebuyPricesByIndex ?? [...DEFAULT_ENTRY_FEES.rebuyPricesByIndex];
+    tournament.rebuyCutoffLevel = doc.rebuyCutoffLevel ?? DEFAULT_ENTRY_FEES.rebuyCutoffLevel;
     tournament.prizeConfig = { ...DEFAULT_PRIZE_CONFIG, ...(doc.prizeConfig ?? {}) };
     tournament._quickPlayerCounter = doc.quickPlayerCounter ?? 0;
     tournament.players = doc.players.map((player) => ({ ...player }));

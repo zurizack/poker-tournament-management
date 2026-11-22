@@ -37,8 +37,11 @@ export function buildHistorySnapshot(tournament) {
       buyInAmount: tournament.buyInAmount,
       rebuyAmount: tournament.rebuyAmount,
       addOnAmount: tournament.addOnAmount,
+      customRebuyPricesEnabled: tournament.customRebuyPricesEnabled,
+      rebuyPricesByIndex: tournament.rebuyPricesByIndex,
     },
     prizeConfig: tournament.prizeConfig,
+    players: tournament.players,
   });
 
   return {
@@ -55,6 +58,9 @@ export function buildHistorySnapshot(tournament) {
     buyInAmount: tournament.buyInAmount,
     rebuyAmount: tournament.rebuyAmount,
     addOnAmount: tournament.addOnAmount,
+    customRebuyPricesEnabled: tournament.customRebuyPricesEnabled,
+    rebuyPricesByIndex: [...tournament.rebuyPricesByIndex],
+    rebuyCutoffLevel: tournament.rebuyCutoffLevel,
     prizeConfig: { ...tournament.prizeConfig },
     finalPrizePool: totalPrizePool,
     finalPayouts: payouts,
