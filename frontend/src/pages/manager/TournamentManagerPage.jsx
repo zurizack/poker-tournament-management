@@ -99,8 +99,100 @@ function BlindStructureTab({ state, sendManagerAction }) {
   );
 }
 
+// Live-editable — unlike allowRebuys/rebuyLimitType (setup-only, shown
+// read-only in SettingsTab), the per-entry dollar amounts can be set or
+// corrected at any point during a running tournament, same as
+// StartingStackControl in PlayerManager. This is what actually makes the
+// prize pool move: every broadcast already recomputes it from these amounts
+// times the live entry/re-buy/add-on counts, so saving here is the only
+// "trigger" needed.
+function EntryFeesEditor({ state, sendManagerAction }) {
+  const { t } = useLanguage();
+  const [buyInAmount, setBuyInAmount] = useState(state.buyInAmount);
+  const [rebuyAmount, setRebuyAmount] = useState(state.rebuyAmount);
+  const [addOnAmount, setAddOnAmount] = useState(state.addOnAmount);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState(null);
+
+  useEffect(() => {
+    setBuyInAmount(state.buyInAmount);
+    setRebuyAmount(state.rebuyAmount);
+    setAddOnAmount(state.addOnAmount);
+  }, [state.buyInAmount, state.rebuyAmount, state.addOnAmount]);
+
+  async function handleSave() {
+    setSaving(true);
+    setMessage(null);
+    try {
+      await sendManagerAction("manager:updateEntryFees", {
+        buyInAmount: Number(buyInAmount) || 0,
+        rebuyAmount: Number(rebuyAmount) || 0,
+        addOnAmount: Number(addOnAmount) || 0,
+      });
+      setMessage({ type: "success", text: t("prize.entryFeesSaved") });
+    } catch (err) {
+      setMessage({ type: "error", text: err.message });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const fieldClass = "w-32 rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100";
+
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
+      <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("prize.amountsHeading")}</h2>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <label className="flex flex-col gap-1 text-sm text-slate-400">
+          {t("prize.buyInAmountLabel")}
+          <input
+            type="number"
+            min="0"
+            value={buyInAmount}
+            onChange={(e) => setBuyInAmount(e.target.value)}
+            className={fieldClass}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-slate-400">
+          {t("prize.rebuyAmountLabel")}
+          <input
+            type="number"
+            min="0"
+            value={rebuyAmount}
+            onChange={(e) => setRebuyAmount(e.target.value)}
+            className={fieldClass}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-slate-400">
+          {t("prize.addOnAmountLabel")}
+          <input
+            type="number"
+            min="0"
+            value={addOnAmount}
+            onChange={(e) => setAddOnAmount(e.target.value)}
+            className={fieldClass}
+          />
+        </label>
+      </div>
+      <button
+        type="button"
+        disabled={saving}
+        onClick={handleSave}
+        className="mt-4 rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700 disabled:opacity-50"
+      >
+        {saving ? t("common.saving") : t("prize.saveAmounts")}
+      </button>
+      {message && (
+        <p className={`mt-2 text-sm ${message.type === "error" ? "text-red-400" : "text-emerald-400"}`}>
+          {message.text}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function PrizeTab({ state, sendManagerAction }) {
-  const { t, locale } = useLanguage();
+  const { t } = useLanguage();
   const [config, setConfig] = useState(state.prizeConfig);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
@@ -128,22 +220,10 @@ function PrizeTab({ state, sendManagerAction }) {
     <div className="flex flex-col gap-6">
       <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
         <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("prize.heading")}</h2>
-        <div className="mb-4 flex flex-wrap gap-4 text-sm text-slate-400">
-          <div>
-            {t("prize.buyInAmountLabel")}{" "}
-            <span className="font-semibold text-slate-100">{formatChips(state.buyInAmount, locale)}</span>
-          </div>
-          <div>
-            {t("prize.rebuyAmountLabel")}{" "}
-            <span className="font-semibold text-slate-100">{formatChips(state.rebuyAmount, locale)}</span>
-          </div>
-          <div>
-            {t("prize.addOnAmountLabel")}{" "}
-            <span className="font-semibold text-slate-100">{formatChips(state.addOnAmount, locale)}</span>
-          </div>
-        </div>
         <PrizePayoutTable prize={state.prize} />
       </div>
+
+      <EntryFeesEditor state={state} sendManagerAction={sendManagerAction} />
 
       <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
         <PrizeConfigEditor config={config} onChange={setConfig} paidPlaces={state.prize.paidPlaces} />

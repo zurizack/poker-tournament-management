@@ -22,6 +22,7 @@ const EVENT_LABEL_KEYS = {
   structure_updated: "structureUpdated",
   starting_stack_updated: "stackUpdated",
   prize_config_updated: "prizeConfigUpdated",
+  entry_fees_updated: "entryFeesUpdated",
   tournament_ended: "ended",
 };
 

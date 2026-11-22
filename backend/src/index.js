@@ -667,6 +667,7 @@ io.on("connection", (socket) => {
   onManagerAction("manager:updatePrizeConfig", (t, { prizeConfig }) =>
     t.updatePrizeConfig(parsePrizeConfigFields(prizeConfig)),
   );
+  onManagerAction("manager:updateEntryFees", (t, payload) => t.updateEntryFees(parseEntryFeeFields(payload)));
   onManagerAction(
     "manager:addPlayer",
     (t, { name }) => t.addPlayer(name),

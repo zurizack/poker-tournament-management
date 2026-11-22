@@ -145,6 +145,9 @@ export const he = {
   prize: {
     heading: "קופת פרסים ותשלומים",
     poolHeading: "קופת פרסים כוללת",
+    amountsHeading: "סכומי ביי-אין, ריביי ואד-און",
+    saveAmounts: "שמור סכומים",
+    entryFeesSaved: "הסכומים נשמרו",
     buyInAmountLabel: "סכום ביי-אין",
     rebuyAmountLabel: "סכום ריביי",
     addOnAmountLabel: "סכום אד-און",
@@ -270,6 +273,7 @@ export const he = {
         stackUpdated: "המלאי ההתחלתי שונה",
         stackDetail: "המלאי ההתחלתי שונה מ-{from} ל-{to}",
         prizeConfigUpdated: "הגדרות הפרסים עודכנו",
+        entryFeesUpdated: "סכומי ביי-אין/ריביי/אד-און עודכנו",
         ended: "הטורניר הסתיים",
       },
     },

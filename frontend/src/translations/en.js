@@ -145,6 +145,9 @@ export const en = {
   prize: {
     heading: "Prize Pool & Payouts",
     poolHeading: "Total Prize Pool",
+    amountsHeading: "Buy-in, Re-buy & Add-on Amounts",
+    saveAmounts: "Save Amounts",
+    entryFeesSaved: "Amounts saved",
     buyInAmountLabel: "Buy-in amount",
     rebuyAmountLabel: "Re-buy amount",
     addOnAmountLabel: "Add-on amount",
@@ -271,6 +274,7 @@ export const en = {
         stackUpdated: "Starting stack changed",
         stackDetail: "Starting stack changed from {from} to {to}",
         prizeConfigUpdated: "Prize settings updated",
+        entryFeesUpdated: "Buy-in/re-buy/add-on amounts updated",
         ended: "Tournament ended",
       },
     },

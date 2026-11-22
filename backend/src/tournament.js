@@ -229,6 +229,19 @@ export class Tournament {
     if (changed) this._logEvent("prize_config_updated");
   }
 
+  // Live-editable (unlike allowRebuys/rebuyLimitType, which are setup-only) —
+  // a manager can set or correct the buy-in/re-buy/add-on dollar amounts at
+  // any point during a running tournament, same as setStartingStack. This is
+  // what actually makes the prize pool move: getState() always multiplies
+  // these against the live entry/re-buy/add-on counts on every broadcast, so
+  // there's nothing else to "trigger" — the next broadcast already reflects it.
+  updateEntryFees(updates) {
+    if (updates.buyInAmount !== undefined) this.buyInAmount = updates.buyInAmount;
+    if (updates.rebuyAmount !== undefined) this.rebuyAmount = updates.rebuyAmount;
+    if (updates.addOnAmount !== undefined) this.addOnAmount = updates.addOnAmount;
+    if (Object.keys(updates).length > 0) this._logEvent("entry_fees_updated");
+  }
+
   getState() {
     const totalBuyIns = this.players.reduce((sum, p) => sum + p.buyIns, 0);
     const totalRebuys = this.players.reduce((sum, p) => sum + p.rebuys, 0);
