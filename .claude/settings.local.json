@@ -15,7 +15,28 @@
       "PowerShell(Get-CimInstance *)",
       "Bash(curl -s -D - -o /dev/null -X OPTIONS http://localhost:4000/api/auth/login -H 'Origin: https://mean-forks-laugh.loca.lt' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: Content-Type')",
       "Bash(curl *)",
-      "PowerShell(Stop-Process *)"
+      "PowerShell(Stop-Process *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git config *)",
+      "Bash(node --check src/index.js)",
+      "Bash(node --check src/tournament.js)",
+      "Bash(node --check src/models/ActiveTournament.js)",
+      "Bash(node --check src/models/TournamentHistory.js)",
+      "Bash(node --check src/historyStore.js)",
+      "Bash(npx eslint *)",
+      "Bash(npm run *)",
+      "Bash(node --check src/templateStore.js)",
+      "Bash(node --check src/playerStore.js)",
+      "Bash(node --check src/models/TournamentTemplate.js)",
+      "Bash(node --check src/models/ManagerPlayer.js)",
+      "Bash(pkill -f \"nodemon src/index.js\")",
+      "Bash(pkill -f \"node src/index.js\")",
+      "Bash(pkill -f \"vite --host\")",
+      "Bash(taskkill //F //PID 14660 //T)",
+      "Bash(taskkill //F //PID 10476 //T)",
+      "Bash(disown)"
     ]
   }
 }
