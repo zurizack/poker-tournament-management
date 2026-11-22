@@ -141,11 +141,23 @@ export class Tournament {
     }
   }
 
+  // rebuyCutoffLevel is 1-indexed ("allowed through level X"); clock's
+  // currentLevelIndex is 0-indexed, so level X is index X-1 — entries/re-buys
+  // are blocked once the index reaches X (i.e. level X+1 or later). Shared by
+  // addPlayer/recordRebuy/undoRebuy so the same late-registration window
+  // governs new entries and re-buys together.
+  _rebuyCutoffReached() {
+    return this.rebuyCutoffLevel != null && this.clock.currentLevelIndex >= this.rebuyCutoffLevel;
+  }
+
   // Name is optional so a manager can seat a player with a single click
   // ("Quick Add") instead of typing a name every time. buyIns is always
   // exactly 1 and stays that way for the player's lifetime — there's no
   // recordBuyIn/undoBuyIn — any further entry/reload is a re-buy instead.
   addPlayer(name) {
+    if (this._rebuyCutoffReached()) {
+      throw new Error(`New entries are closed past level ${this.rebuyCutoffLevel}`);
+    }
     const trimmed = (name || "").trim();
     const finalName = trimmed || `Player ${++this._quickPlayerCounter}`;
     const player = {
@@ -191,10 +203,7 @@ export class Tournament {
     if (!this.allowRebuys) {
       throw new Error("Rebuys are not allowed for this tournament");
     }
-    // rebuyCutoffLevel is 1-indexed ("allowed through level X"); clock's
-    // currentLevelIndex is 0-indexed, so level X is index X-1 — re-buys are
-    // blocked once the index reaches X (i.e. level X+1 or later).
-    if (this.rebuyCutoffLevel != null && this.clock.currentLevelIndex >= this.rebuyCutoffLevel) {
+    if (this._rebuyCutoffReached()) {
       throw new Error(`Rebuys are no longer allowed past level ${this.rebuyCutoffLevel}`);
     }
     if (this.rebuyLimitType === "limited" && this._findPlayer(playerId).rebuys >= this.maxRebuysPerPlayer) {
@@ -203,9 +212,15 @@ export class Tournament {
     this._adjustCount(playerId, "rebuys", 1);
   }
 
-  // Always allowed, even past the limit — correcting a mistaken entry
-  // shouldn't be blocked by the same limit that stopped it going up.
+  // Normally allowed even past the per-player limit — correcting a mistaken
+  // entry shouldn't be blocked by the same limit that stopped it going up.
+  // But once the cutoff level has passed, the count is frozen in both
+  // directions: letting a manager decrement here would leave no way back up
+  // again (recordRebuy is blocked), silently losing a real re-buy from the pool.
   undoRebuy(playerId) {
+    if (this._rebuyCutoffReached()) {
+      throw new Error(`Rebuys are locked past level ${this.rebuyCutoffLevel} and can't be adjusted`);
+    }
     this._adjustCount(playerId, "rebuys", -1);
   }
 

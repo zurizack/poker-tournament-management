@@ -4,7 +4,7 @@ import { formatChips } from "../utils/format";
 
 // Mobile-first: 36px tap targets by default, shrinking down on sm+ where a
 // mouse pointer makes the extra size unnecessary.
-function Counter({ label, value, onIncrement, onDecrement, incrementDisabled, hint }) {
+function Counter({ label, value, onIncrement, onDecrement, incrementDisabled, decrementDisabled, hint }) {
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-900 px-2 py-1 sm:w-auto sm:justify-start sm:gap-1.5 sm:bg-transparent sm:px-0 sm:py-0">
       <span className="text-sm text-slate-400 sm:w-14 sm:text-xs sm:text-slate-500">
@@ -15,7 +15,7 @@ function Counter({ label, value, onIncrement, onDecrement, incrementDisabled, hi
         <button
           type="button"
           onClick={onDecrement}
-          disabled={value <= 0}
+          disabled={value <= 0 || decrementDisabled}
           className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-base font-bold text-slate-300 hover:bg-slate-700 disabled:opacity-30 sm:h-7 sm:w-7 sm:rounded sm:text-sm"
         >
           −
@@ -153,10 +153,16 @@ export function PlayerManager({
     <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
       <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("player.heading")}</h2>
 
-      {allowRebuys && rebuyCutoffReached && (
+      {/* Always visible, not just once the cutoff is actually reached — a
+          manager should know the rule going in, not just when it bites. */}
+      {rebuyCutoffLevel == null ? (
+        <p className="mb-4 text-sm text-slate-500">{t("player.cutoffRuleNone")}</p>
+      ) : rebuyCutoffReached ? (
         <p className="mb-4 text-sm font-semibold text-amber-400">
           {t("player.rebuyCutoffReached", { level: rebuyCutoffLevel })}
         </p>
+      ) : (
+        <p className="mb-4 text-sm text-slate-500">{t("player.cutoffRuleUpcoming", { level: rebuyCutoffLevel })}</p>
       )}
 
       <StartingStackControl startingStack={startingStack} onSetStartingStack={onSetStartingStack} />
@@ -164,8 +170,9 @@ export function PlayerManager({
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <button
           type="button"
+          disabled={rebuyCutoffReached}
           onClick={handleQuickAdd}
-          className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-base font-bold text-white hover:bg-emerald-500 sm:w-auto sm:py-2 sm:text-sm sm:font-semibold"
+          className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-base font-bold text-white hover:bg-emerald-500 disabled:opacity-40 sm:w-auto sm:py-2 sm:text-sm sm:font-semibold"
         >
           {t("player.quickAdd")}
         </button>
@@ -198,7 +205,8 @@ export function PlayerManager({
           )}
           <button
             type="submit"
-            className="rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-700 sm:py-2"
+            disabled={rebuyCutoffReached}
+            className="rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-700 disabled:opacity-40 sm:py-2"
           >
             {t("common.add")}
           </button>
@@ -248,6 +256,7 @@ export function PlayerManager({
                       incrementDisabled={
                         (rebuyLimitType === "limited" && player.rebuys >= maxRebuysPerPlayer) || rebuyCutoffReached
                       }
+                      decrementDisabled={rebuyCutoffReached}
                       onIncrement={() => onRecordRebuy(player.id)}
                       onDecrement={() => onUndoRebuy(player.id)}
                     />

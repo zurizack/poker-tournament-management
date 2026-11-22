@@ -70,7 +70,7 @@ function NextLevelPreview({ nextLevel }) {
 // preview. Font sizes use clamp() so the display scales smoothly between a
 // phone held at arm's length and a desktop monitor, rather than jumping at
 // fixed breakpoints.
-export function ClockDisplay({ clockState, totals, prize, compact = false }) {
+export function ClockDisplay({ clockState, totals, prize, allowAddOn = true, allowRebuys, rebuyCutoffLevel, compact = false }) {
   const { t, locale } = useLanguage();
   const { status, currentLevel, nextLevel, remainingMs, totalLevels } = clockState;
   const isPaused = status === "paused";
@@ -126,9 +126,27 @@ export function ClockDisplay({ clockState, totals, prize, compact = false }) {
           <div className="rounded-lg bg-slate-900/60 py-2 sm:bg-transparent sm:py-0">
             {t("clock.rebuys")} <span className="font-semibold text-slate-100">{totals.totalRebuys}</span>
           </div>
-          <div className="rounded-lg bg-slate-900/60 py-2 sm:bg-transparent sm:py-0">
-            {t("clock.addOns")} <span className="font-semibold text-slate-100">{totals.totalAddOns}</span>
-          </div>
+          {allowAddOn && (
+            <div className="rounded-lg bg-slate-900/60 py-2 sm:bg-transparent sm:py-0">
+              {t("clock.addOns")} <span className="font-semibold text-slate-100">{totals.totalAddOns}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {allowRebuys && (
+        <div
+          className={`text-xs sm:text-sm ${
+            rebuyCutoffLevel != null && clockState.currentLevelIndex >= rebuyCutoffLevel
+              ? "font-semibold text-amber-400"
+              : "text-slate-500"
+          }`}
+        >
+          {rebuyCutoffLevel == null
+            ? t("player.cutoffRuleNone")
+            : clockState.currentLevelIndex >= rebuyCutoffLevel
+              ? t("player.rebuyCutoffReached", { level: rebuyCutoffLevel })
+              : t("player.cutoffRuleUpcoming", { level: rebuyCutoffLevel })}
         </div>
       )}
 

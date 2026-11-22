@@ -160,7 +160,7 @@ function EntryFeesEditor({ state, sendManagerAction }) {
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
       <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("prize.amountsHeading")}</h2>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className={`grid grid-cols-1 gap-3 ${state.allowAddOn ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
         <label className="flex flex-col gap-1 text-sm text-slate-400">
           {t("prize.buyInAmountLabel")}
           <input
@@ -181,16 +181,18 @@ function EntryFeesEditor({ state, sendManagerAction }) {
             className={fieldClass}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm text-slate-400">
-          {t("prize.addOnAmountLabel")}
-          <input
-            type="number"
-            min="0"
-            value={addOnAmount}
-            onChange={(e) => setAddOnAmount(e.target.value)}
-            className={fieldClass}
-          />
-        </label>
+        {state.allowAddOn && (
+          <label className="flex flex-col gap-1 text-sm text-slate-400">
+            {t("prize.addOnAmountLabel")}
+            <input
+              type="number"
+              min="0"
+              value={addOnAmount}
+              onChange={(e) => setAddOnAmount(e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+        )}
       </div>
 
       {state.rebuyLimitType === "limited" && (
@@ -335,14 +337,18 @@ function SettingsTab({ state, username, ending, onEndTournament }) {
             <dt className="text-slate-500">{t("prize.rebuyAmountLabel")}</dt>
             <dd className="text-slate-200">{formatChips(state.rebuyAmount, locale)}</dd>
           </div>
-          <div>
-            <dt className="text-slate-500">{t("setup.rebuyCutoffHeading")}</dt>
-            <dd className="text-slate-200">
-              {state.rebuyCutoffLevel == null
-                ? t("setup.noCutoff")
-                : t("live.cutoffThroughLevel", { level: state.rebuyCutoffLevel })}
-            </dd>
-          </div>
+          {state.allowRebuys && (
+            <div>
+              <dt className="text-slate-500">{t("setup.rebuyCutoffHeading")}</dt>
+              <dd className="text-slate-200">
+                {state.rebuyCutoffLevel == null
+                  ? t("player.cutoffRuleNone")
+                  : state.clock.currentLevelIndex >= state.rebuyCutoffLevel
+                    ? t("player.rebuyCutoffReached", { level: state.rebuyCutoffLevel })
+                    : t("player.cutoffRuleUpcoming", { level: state.rebuyCutoffLevel })}
+              </dd>
+            </div>
+          )}
           {state.rebuyLimitType === "limited" && (
             <div>
               <dt className="text-slate-500">{t("live.customRebuyPricingLabel")}</dt>
@@ -351,10 +357,12 @@ function SettingsTab({ state, username, ending, onEndTournament }) {
               </dd>
             </div>
           )}
-          <div>
-            <dt className="text-slate-500">{t("prize.addOnAmountLabel")}</dt>
-            <dd className="text-slate-200">{formatChips(state.addOnAmount, locale)}</dd>
-          </div>
+          {state.allowAddOn && (
+            <div>
+              <dt className="text-slate-500">{t("prize.addOnAmountLabel")}</dt>
+              <dd className="text-slate-200">{formatChips(state.addOnAmount, locale)}</dd>
+            </div>
+          )}
           <div>
             <dt className="text-slate-500">{t("live.rebuysLabel")}</dt>
             <dd className="text-slate-200">
@@ -365,10 +373,12 @@ function SettingsTab({ state, username, ending, onEndTournament }) {
                   : t("setup.unlimited")}
             </dd>
           </div>
-          <div>
-            <dt className="text-slate-500">{t("live.addOnsLabel")}</dt>
-            <dd className="text-slate-200">{state.allowAddOn ? t("live.allowed") : t("live.notAllowed")}</dd>
-          </div>
+          {state.allowAddOn && (
+            <div>
+              <dt className="text-slate-500">{t("live.addOnsLabel")}</dt>
+              <dd className="text-slate-200">{t("live.allowed")}</dd>
+            </div>
+          )}
           <div>
             <dt className="text-slate-500">{t("live.ownerLabel")}</dt>
             <dd className="text-slate-200">{state.ownerUsername}</dd>
@@ -526,7 +536,15 @@ export function TournamentManagerPage() {
         {activeTab === "clock" && (
           <>
             <div className="mb-6 overflow-hidden rounded-xl border border-slate-800">
-              <ClockDisplay clockState={state.clock} totals={state.totals} prize={state.prize} compact />
+              <ClockDisplay
+                clockState={state.clock}
+                totals={state.totals}
+                prize={state.prize}
+                allowAddOn={state.allowAddOn}
+                allowRebuys={state.allowRebuys}
+                rebuyCutoffLevel={state.rebuyCutoffLevel}
+                compact
+              />
               <ControlPanel
                 status={state.clock.status}
                 onStart={() => sendManagerAction("manager:start")}

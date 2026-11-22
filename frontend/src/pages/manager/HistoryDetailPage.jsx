@@ -153,7 +153,7 @@ export function HistoryDetailPage() {
           <StatCard label={t("history.detail.duration")} value={formatDuration(history.activeDurationMs, t)} />
           <StatCard label={t("history.detail.entries")} value={history.totalEntries} />
           <StatCard label={t("history.detail.rebuysLabel")} value={history.totalRebuys} />
-          <StatCard label={t("live.addOnsLabel")} value={history.totalAddOns} />
+          {history.allowAddOn && <StatCard label={t("live.addOnsLabel")} value={history.totalAddOns} />}
           <StatCard label={t("nav.players")} value={history.uniquePlayers} />
           <StatCard label={t("history.detail.finalLevelLabel")} value={history.finalLevelIndex + 1} />
           <StatCard
@@ -177,10 +177,12 @@ export function HistoryDetailPage() {
               <dt className="text-slate-500">{t("prize.rebuyAmountLabel")}</dt>
               <dd className="text-slate-200">{formatChips(history.rebuyAmount, locale)}</dd>
             </div>
-            <div>
-              <dt className="text-slate-500">{t("prize.addOnAmountLabel")}</dt>
-              <dd className="text-slate-200">{formatChips(history.addOnAmount, locale)}</dd>
-            </div>
+            {history.allowAddOn && (
+              <div>
+                <dt className="text-slate-500">{t("prize.addOnAmountLabel")}</dt>
+                <dd className="text-slate-200">{formatChips(history.addOnAmount, locale)}</dd>
+              </div>
+            )}
             <div>
               <dt className="text-slate-500">{t("history.detail.rebuysLabel")}</dt>
               <dd className="text-slate-200">
@@ -191,10 +193,22 @@ export function HistoryDetailPage() {
                     : t("setup.unlimited")}
               </dd>
             </div>
-            <div>
-              <dt className="text-slate-500">{t("live.addOnsLabel")}</dt>
-              <dd className="text-slate-200">{history.allowAddOn ? t("live.allowed") : t("live.notAllowed")}</dd>
-            </div>
+            {history.allowRebuys && (
+              <div>
+                <dt className="text-slate-500">{t("setup.rebuyCutoffHeading")}</dt>
+                <dd className="text-slate-200">
+                  {history.rebuyCutoffLevel == null
+                    ? t("player.cutoffRuleNone")
+                    : t("player.cutoffRuleUpcoming", { level: history.rebuyCutoffLevel })}
+                </dd>
+              </div>
+            )}
+            {history.allowAddOn && (
+              <div>
+                <dt className="text-slate-500">{t("live.addOnsLabel")}</dt>
+                <dd className="text-slate-200">{t("live.allowed")}</dd>
+              </div>
+            )}
             <div>
               <dt className="text-slate-500">{t("live.ownerLabel")}</dt>
               <dd className="text-slate-200">{history.ownerUsername}</dd>
@@ -238,8 +252,8 @@ export function HistoryDetailPage() {
                 </span>
                 <span className="text-slate-400">
                   {t("history.detail.buyIns", { count: player.buyIns })} ·{" "}
-                  {t("history.detail.rebuysCount", { count: player.rebuys })} ·{" "}
-                  {t("history.detail.addOnsCount", { count: player.addOns })}
+                  {t("history.detail.rebuysCount", { count: player.rebuys })}
+                  {history.allowAddOn && <> · {t("history.detail.addOnsCount", { count: player.addOns })}</>}
                 </span>
               </li>
             ))}
