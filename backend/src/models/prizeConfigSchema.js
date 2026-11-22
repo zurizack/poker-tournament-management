@@ -9,8 +9,6 @@ import mongoose from "mongoose";
 // describe the tournament itself rather than how its pool gets paid out.
 export const prizeConfigSchema = new mongoose.Schema(
   {
-    manualPrizePoolEnabled: { type: Boolean, default: false },
-    manualPrizePoolAmount: { type: Number, default: 0 },
     itmMode: { type: String, enum: ["percentage", "fixed"], default: "percentage" },
     itmPercent: { type: Number, default: 15 },
     itmFixedPlaces: { type: Number, default: 3 },

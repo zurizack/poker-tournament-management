@@ -1,20 +1,19 @@
 import { useEffect } from "react";
 import { useLanguage } from "../context/LanguageContext";
 
-const FIELD = "w-32 rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 disabled:opacity-40";
 const SMALL_FIELD = "w-20 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100 disabled:opacity-40";
 
 // Payout-structure form only — buy-in/re-buy/add-on amounts live on the
 // tournament's core data (Setup page's Basics/Re-buy sections, same place as
 // starting stack) since the live prize pool is always derived automatically
-// from those amounts plus actual entries/re-buys/add-ons. This editor only
-// covers: an optional manual total-pool override, paid-places (ITM) mode,
-// and payout distribution — used by both TournamentSetupPage (pre-launch,
-// no live table) and the Live Manager's Prize Pool tab (same fields plus a
-// computed table rendered alongside it by the caller). `paidPlaces`, when
-// known, drives the custom percentage row count; `null` means it can't be
-// known yet (percentage-of-field ITM mode before any entries exist) and the
-// row editor is hidden in favor of an explanatory note instead.
+// from those amounts plus actual entries/re-buys/add-ons, with no manual
+// override. This editor only covers: paid-places (ITM) mode and payout
+// distribution — used by both TournamentSetupPage (pre-launch, no live
+// table) and the Live Manager's Prize Pool tab (same fields plus a computed
+// table rendered alongside it by the caller). `paidPlaces`, when known,
+// drives the custom percentage row count; `null` means it can't be known
+// yet (percentage-of-field ITM mode before any entries exist) and the row
+// editor is hidden in favor of an explanatory note instead.
 export function PrizeConfigEditor({ config, onChange, paidPlaces = null, disabled = false }) {
   const { t } = useLanguage();
 
@@ -47,32 +46,8 @@ export function PrizeConfigEditor({ config, onChange, paidPlaces = null, disable
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h3 className="mb-3 text-sm font-semibold text-slate-300">{t("prize.poolHeading")}</h3>
-        <label className="flex items-center gap-3">
-          <input
-            type="checkbox"
-            disabled={disabled}
-            checked={config.manualPrizePoolEnabled}
-            onChange={(e) => set("manualPrizePoolEnabled", e.target.checked)}
-            className="h-5 w-5"
-          />
-          <span className="text-sm text-slate-200">{t("prize.manualOverrideLabel")}</span>
-        </label>
-        {config.manualPrizePoolEnabled ? (
-          <label className="mt-2 ms-8 flex flex-col gap-1 text-sm text-slate-400">
-            {t("prize.manualAmountLabel")}
-            <input
-              type="number"
-              min="0"
-              disabled={disabled}
-              value={config.manualPrizePoolAmount}
-              onChange={(e) => set("manualPrizePoolAmount", e.target.value)}
-              className={FIELD}
-            />
-          </label>
-        ) : (
-          <p className="mt-2 ms-8 text-xs text-slate-500">{t("prize.calculatedNote")}</p>
-        )}
+        <h3 className="mb-1 text-sm font-semibold text-slate-300">{t("prize.poolHeading")}</h3>
+        <p className="text-xs text-slate-500">{t("prize.calculatedNote")}</p>
       </div>
 
       <div>

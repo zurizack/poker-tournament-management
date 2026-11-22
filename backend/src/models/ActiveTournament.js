@@ -62,7 +62,7 @@ const activeTournamentSchema = new mongoose.Schema(
     allowRebuys: { type: Boolean, default: true },
     rebuyLimitType: { type: String, enum: ["unlimited", "limited"], default: "unlimited" },
     maxRebuysPerPlayer: { type: Number, default: null },
-    allowAddOn: { type: Boolean, default: true },
+    allowAddOn: { type: Boolean, default: false },
     buyInAmount: { type: Number, default: 0 },
     rebuyAmount: { type: Number, default: 0 },
     addOnAmount: { type: Number, default: 0 },

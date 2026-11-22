@@ -296,7 +296,7 @@ app.post("/api/tournaments", requireAuth, async (req, res) => {
       allowRebuys: seed.allowRebuys ?? true,
       rebuyLimitType: seed.rebuyLimitType ?? "unlimited",
       maxRebuysPerPlayer: seed.maxRebuysPerPlayer ?? null,
-      allowAddOn: seed.allowAddOn ?? true,
+      allowAddOn: seed.allowAddOn ?? false,
       buyInAmount: seed.buyInAmount ?? 0,
       rebuyAmount: seed.rebuyAmount ?? 0,
       addOnAmount: seed.addOnAmount ?? 0,

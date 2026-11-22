@@ -7,10 +7,11 @@
 // Payout structure only — buy-in/re-buy/add-on amounts live on the
 // tournament's core data (same place as startingStack/allowRebuys) since
 // they describe the tournament itself, not how its pool gets paid out. See
-// DEFAULT_ENTRY_FEES below for that half of the calculation.
+// DEFAULT_ENTRY_FEES below for that half of the calculation. There is no
+// manual total-pool override — the pool is always the automatic calculation,
+// by design (see the "Prize Pool & Payouts" plan: relying solely on actual
+// entries/re-buys/add-ons keeps the number honest as the field changes).
 export const DEFAULT_PRIZE_CONFIG = Object.freeze({
-  manualPrizePoolEnabled: false,
-  manualPrizePoolAmount: 0,
   itmMode: "percentage",
   itmPercent: 15,
   itmFixedPlaces: 3,
@@ -93,18 +94,15 @@ export function resolvePayoutPercentages({ payoutMode, customPayouts, paidPlaces
 // Tournament.getState() already computes — "total entries" for ITM purposes
 // is totalBuyIns (re-buys/add-ons add money, not new entries into the field).
 // `entryFees` is the tournament's own { buyInAmount, rebuyAmount, addOnAmount }
-// (core data, not part of prizeConfig) — the live pool is always derived from
-// these plus the live counts, unless manualPrizePoolEnabled overrides it outright.
+// (core data, not part of prizeConfig) — the live pool is always this
+// automatic calculation, with no manual override.
 export function computePrizePool({ totals, entryFees, prizeConfig }) {
   const config = { ...DEFAULT_PRIZE_CONFIG, ...prizeConfig };
   const fees = { ...DEFAULT_ENTRY_FEES, ...entryFees };
   const totalEntries = totals.totalBuyIns;
 
-  const totalPrizePool = config.manualPrizePoolEnabled
-    ? Math.max(0, Number(config.manualPrizePoolAmount) || 0)
-    : totals.totalBuyIns * fees.buyInAmount +
-      totals.totalRebuys * fees.rebuyAmount +
-      totals.totalAddOns * fees.addOnAmount;
+  const totalPrizePool =
+    totals.totalBuyIns * fees.buyInAmount + totals.totalRebuys * fees.rebuyAmount + totals.totalAddOns * fees.addOnAmount;
 
   const paidPlaces = computePaidPlaces(totalEntries, config);
   const percentages = resolvePayoutPercentages({
@@ -147,15 +145,9 @@ export function parseEntryFeeFields(body) {
 // update contract as parseRebuyRules in index.js. Throws a plain Error on
 // invalid input; callers turn that into an HTTP 400.
 export function parsePrizeConfigFields(body) {
-  const { manualPrizePoolEnabled, manualPrizePoolAmount, itmMode, itmPercent, itmFixedPlaces, payoutMode, customPayouts } =
-    body || {};
+  const { itmMode, itmPercent, itmFixedPlaces, payoutMode, customPayouts } = body || {};
 
   const updates = {};
-
-  if (manualPrizePoolEnabled !== undefined) updates.manualPrizePoolEnabled = Boolean(manualPrizePoolEnabled);
-  if (manualPrizePoolAmount !== undefined) {
-    updates.manualPrizePoolAmount = nonNegativeNumber(manualPrizePoolAmount, "Manual prize pool amount");
-  }
 
   if (itmMode !== undefined) {
     if (!["percentage", "fixed"].includes(itmMode)) {

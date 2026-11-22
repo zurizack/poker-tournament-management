@@ -20,7 +20,7 @@ export class Tournament {
     this.allowRebuys = true;
     this.rebuyLimitType = "unlimited";
     this.maxRebuysPerPlayer = null;
-    this.allowAddOn = true;
+    this.allowAddOn = false;
     this.buyInAmount = DEFAULT_ENTRY_FEES.buyInAmount;
     this.rebuyAmount = DEFAULT_ENTRY_FEES.rebuyAmount;
     this.addOnAmount = DEFAULT_ENTRY_FEES.addOnAmount;
@@ -324,7 +324,7 @@ export class Tournament {
     tournament.allowRebuys = doc.allowRebuys ?? true;
     tournament.rebuyLimitType = doc.rebuyLimitType ?? "unlimited";
     tournament.maxRebuysPerPlayer = doc.maxRebuysPerPlayer ?? null;
-    tournament.allowAddOn = doc.allowAddOn ?? true;
+    tournament.allowAddOn = doc.allowAddOn ?? false;
     tournament.buyInAmount = doc.buyInAmount ?? DEFAULT_ENTRY_FEES.buyInAmount;
     tournament.rebuyAmount = doc.rebuyAmount ?? DEFAULT_ENTRY_FEES.rebuyAmount;
     tournament.addOnAmount = doc.addOnAmount ?? DEFAULT_ENTRY_FEES.addOnAmount;

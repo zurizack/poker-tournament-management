@@ -17,8 +17,6 @@ const STARTER_LEVELS = [{ smallBlind: 25, bigBlind: 50, ante: 0, durationSeconds
 // alongside startingStack/allowRebuys). Setup has no live tournament yet to
 // read defaults from, so a brand-new form seeds here.
 const DEFAULT_PRIZE_CONFIG = {
-  manualPrizePoolEnabled: false,
-  manualPrizePoolAmount: 0,
   itmMode: "percentage",
   itmPercent: 15,
   itmFixedPlaces: 3,
@@ -42,7 +40,7 @@ export function TournamentSetupPage() {
   const [allowRebuys, setAllowRebuys] = useState(true);
   const [rebuyLimitType, setRebuyLimitType] = useState("unlimited");
   const [maxRebuysPerPlayer, setMaxRebuysPerPlayer] = useState(2);
-  const [allowAddOn, setAllowAddOn] = useState(true);
+  const [allowAddOn, setAllowAddOn] = useState(false);
   const [buyInAmount, setBuyInAmount] = useState(0);
   const [rebuyAmount, setRebuyAmount] = useState(0);
   const [addOnAmount, setAddOnAmount] = useState(0);
@@ -200,41 +198,37 @@ export function TournamentSetupPage() {
 
         <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
           <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("setup.basics")}</h2>
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex flex-col gap-4">
             <input
               type="text"
               placeholder={t("setup.tournamentNamePlaceholder")}
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="flex-1 rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+              className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
             />
-            <div className="flex items-center gap-2">
-              <label htmlFor="startingStack" className="whitespace-nowrap text-sm text-slate-400">
-                {t("setup.startingStackLabel")}
-              </label>
+            <label htmlFor="startingStack" className="flex flex-col gap-1 text-sm text-slate-400">
+              {t("setup.startingStackLabel")}
               <input
                 id="startingStack"
                 type="number"
                 min="1"
                 value={startingStack}
                 onChange={(e) => setStartingStack(e.target.value)}
-                className="w-28 rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+                className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
               />
-            </div>
-            <div className="flex items-center gap-2">
-              <label htmlFor="buyInAmount" className="whitespace-nowrap text-sm text-slate-400">
-                {t("prize.buyInAmountLabel")}
-              </label>
+            </label>
+            <label htmlFor="buyInAmount" className="flex flex-col gap-1 text-sm text-slate-400">
+              {t("prize.buyInAmountLabel")}
               <input
                 id="buyInAmount"
                 type="number"
                 min="0"
                 value={buyInAmount}
                 onChange={(e) => setBuyInAmount(e.target.value)}
-                className="w-28 rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+                className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
               />
-            </div>
+            </label>
           </div>
         </div>
 
