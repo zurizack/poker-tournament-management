@@ -33,6 +33,11 @@ export function buildHistorySnapshot(tournament) {
 
   const { totalPrizePool, payouts } = computePrizePool({
     totals: { totalBuyIns: totalEntries, totalRebuys, totalAddOns },
+    entryFees: {
+      buyInAmount: tournament.buyInAmount,
+      rebuyAmount: tournament.rebuyAmount,
+      addOnAmount: tournament.addOnAmount,
+    },
     prizeConfig: tournament.prizeConfig,
   });
 
@@ -47,6 +52,9 @@ export function buildHistorySnapshot(tournament) {
     rebuyLimitType: tournament.rebuyLimitType,
     maxRebuysPerPlayer: tournament.maxRebuysPerPlayer,
     allowAddOn: tournament.allowAddOn,
+    buyInAmount: tournament.buyInAmount,
+    rebuyAmount: tournament.rebuyAmount,
+    addOnAmount: tournament.addOnAmount,
     prizeConfig: { ...tournament.prizeConfig },
     finalPrizePool: totalPrizePool,
     finalPayouts: payouts,

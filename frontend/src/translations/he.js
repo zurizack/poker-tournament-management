@@ -144,7 +144,7 @@ export const he = {
   },
   prize: {
     heading: "קופת פרסים ותשלומים",
-    amountsHeading: "סכומים",
+    poolHeading: "קופת פרסים כוללת",
     buyInAmountLabel: "סכום ביי-אין",
     rebuyAmountLabel: "סכום ריביי",
     addOnAmountLabel: "סכום אד-און",

@@ -4,10 +4,11 @@
 // pure, easily-testable module; index.js is the only caller that touches
 // HTTP/validation errors.
 
+// Payout structure only — buy-in/re-buy/add-on amounts live on the
+// tournament's core data (same place as startingStack/allowRebuys) since
+// they describe the tournament itself, not how its pool gets paid out. See
+// DEFAULT_ENTRY_FEES below for that half of the calculation.
 export const DEFAULT_PRIZE_CONFIG = Object.freeze({
-  buyInAmount: 0,
-  rebuyAmount: 0,
-  addOnAmount: 0,
   manualPrizePoolEnabled: false,
   manualPrizePoolAmount: 0,
   itmMode: "percentage",
@@ -15,6 +16,14 @@ export const DEFAULT_PRIZE_CONFIG = Object.freeze({
   itmFixedPlaces: 3,
   payoutMode: "formula",
   customPayouts: [],
+});
+
+// Per-entry dollar amounts — set once at setup/template time alongside the
+// other core tournament fields, read here only to compute the live pool.
+export const DEFAULT_ENTRY_FEES = Object.freeze({
+  buyInAmount: 0,
+  rebuyAmount: 0,
+  addOnAmount: 0,
 });
 
 // These three field counts are small, fixed, real-world standard home-game
@@ -83,15 +92,19 @@ export function resolvePayoutPercentages({ payoutMode, customPayouts, paidPlaces
 // `totals` is the same { totalBuyIns, totalRebuys, totalAddOns } shape
 // Tournament.getState() already computes — "total entries" for ITM purposes
 // is totalBuyIns (re-buys/add-ons add money, not new entries into the field).
-export function computePrizePool({ totals, prizeConfig }) {
+// `entryFees` is the tournament's own { buyInAmount, rebuyAmount, addOnAmount }
+// (core data, not part of prizeConfig) — the live pool is always derived from
+// these plus the live counts, unless manualPrizePoolEnabled overrides it outright.
+export function computePrizePool({ totals, entryFees, prizeConfig }) {
   const config = { ...DEFAULT_PRIZE_CONFIG, ...prizeConfig };
+  const fees = { ...DEFAULT_ENTRY_FEES, ...entryFees };
   const totalEntries = totals.totalBuyIns;
 
   const totalPrizePool = config.manualPrizePoolEnabled
     ? Math.max(0, Number(config.manualPrizePoolAmount) || 0)
-    : totals.totalBuyIns * config.buyInAmount +
-      totals.totalRebuys * config.rebuyAmount +
-      totals.totalAddOns * config.addOnAmount;
+    : totals.totalBuyIns * fees.buyInAmount +
+      totals.totalRebuys * fees.rebuyAmount +
+      totals.totalAddOns * fees.addOnAmount;
 
   const paidPlaces = computePaidPlaces(totalEntries, config);
   const percentages = resolvePayoutPercentages({
@@ -109,37 +122,36 @@ export function computePrizePool({ totals, prizeConfig }) {
   return { totalPrizePool, paidPlaces, payouts };
 }
 
+function nonNegativeNumber(value, label) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) {
+    throw new Error(`${label} must be a non-negative number`);
+  }
+  return n;
+}
+
+// Parses/coerces whatever subset of { buyInAmount, rebuyAmount, addOnAmount }
+// appear in `body` — these are core tournament fields (same partial-update
+// contract as parseRebuyRules), not part of prizeConfig.
+export function parseEntryFeeFields(body) {
+  const { buyInAmount, rebuyAmount, addOnAmount } = body || {};
+  const updates = {};
+  if (buyInAmount !== undefined) updates.buyInAmount = nonNegativeNumber(buyInAmount, "Buy-in amount");
+  if (rebuyAmount !== undefined) updates.rebuyAmount = nonNegativeNumber(rebuyAmount, "Re-buy amount");
+  if (addOnAmount !== undefined) updates.addOnAmount = nonNegativeNumber(addOnAmount, "Add-on amount");
+  return updates;
+}
+
 // Parses/coerces whatever subset of prizeConfig fields appear in `body`,
 // returning only those fields — same "only touch what's present" partial-
 // update contract as parseRebuyRules in index.js. Throws a plain Error on
 // invalid input; callers turn that into an HTTP 400.
 export function parsePrizeConfigFields(body) {
-  const {
-    buyInAmount,
-    rebuyAmount,
-    addOnAmount,
-    manualPrizePoolEnabled,
-    manualPrizePoolAmount,
-    itmMode,
-    itmPercent,
-    itmFixedPlaces,
-    payoutMode,
-    customPayouts,
-  } = body || {};
-
-  function nonNegativeNumber(value, label) {
-    const n = Number(value);
-    if (!Number.isFinite(n) || n < 0) {
-      throw new Error(`${label} must be a non-negative number`);
-    }
-    return n;
-  }
+  const { manualPrizePoolEnabled, manualPrizePoolAmount, itmMode, itmPercent, itmFixedPlaces, payoutMode, customPayouts } =
+    body || {};
 
   const updates = {};
 
-  if (buyInAmount !== undefined) updates.buyInAmount = nonNegativeNumber(buyInAmount, "Buy-in amount");
-  if (rebuyAmount !== undefined) updates.rebuyAmount = nonNegativeNumber(rebuyAmount, "Re-buy amount");
-  if (addOnAmount !== undefined) updates.addOnAmount = nonNegativeNumber(addOnAmount, "Add-on amount");
   if (manualPrizePoolEnabled !== undefined) updates.manualPrizePoolEnabled = Boolean(manualPrizePoolEnabled);
   if (manualPrizePoolAmount !== undefined) {
     updates.manualPrizePoolAmount = nonNegativeNumber(manualPrizePoolAmount, "Manual prize pool amount");

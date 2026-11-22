@@ -100,7 +100,7 @@ function BlindStructureTab({ state, sendManagerAction }) {
 }
 
 function PrizeTab({ state, sendManagerAction }) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [config, setConfig] = useState(state.prizeConfig);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
@@ -128,6 +128,20 @@ function PrizeTab({ state, sendManagerAction }) {
     <div className="flex flex-col gap-6">
       <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
         <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("prize.heading")}</h2>
+        <div className="mb-4 flex flex-wrap gap-4 text-sm text-slate-400">
+          <div>
+            {t("prize.buyInAmountLabel")}{" "}
+            <span className="font-semibold text-slate-100">{formatChips(state.buyInAmount, locale)}</span>
+          </div>
+          <div>
+            {t("prize.rebuyAmountLabel")}{" "}
+            <span className="font-semibold text-slate-100">{formatChips(state.rebuyAmount, locale)}</span>
+          </div>
+          <div>
+            {t("prize.addOnAmountLabel")}{" "}
+            <span className="font-semibold text-slate-100">{formatChips(state.addOnAmount, locale)}</span>
+          </div>
+        </div>
         <PrizePayoutTable prize={state.prize} />
       </div>
 
@@ -167,6 +181,18 @@ function SettingsTab({ state, username, ending, onEndTournament }) {
           <div>
             <dt className="text-slate-500">{t("setup.startingStackLabel")}</dt>
             <dd className="text-slate-200">{formatChips(state.totals.startingStack, locale)}</dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">{t("prize.buyInAmountLabel")}</dt>
+            <dd className="text-slate-200">{formatChips(state.buyInAmount, locale)}</dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">{t("prize.rebuyAmountLabel")}</dt>
+            <dd className="text-slate-200">{formatChips(state.rebuyAmount, locale)}</dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">{t("prize.addOnAmountLabel")}</dt>
+            <dd className="text-slate-200">{formatChips(state.addOnAmount, locale)}</dd>
           </div>
           <div>
             <dt className="text-slate-500">{t("live.rebuysLabel")}</dt>

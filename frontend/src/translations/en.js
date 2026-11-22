@@ -144,7 +144,7 @@ export const en = {
   },
   prize: {
     heading: "Prize Pool & Payouts",
-    amountsHeading: "Amounts",
+    poolHeading: "Total Prize Pool",
     buyInAmountLabel: "Buy-in amount",
     rebuyAmountLabel: "Re-buy amount",
     addOnAmountLabel: "Add-on amount",

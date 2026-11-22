@@ -169,6 +169,18 @@ export function HistoryDetailPage() {
           <h2 className="mb-4 text-lg font-semibold text-slate-100">{t("live.configuration")}</h2>
           <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
             <div>
+              <dt className="text-slate-500">{t("prize.buyInAmountLabel")}</dt>
+              <dd className="text-slate-200">{formatChips(history.buyInAmount, locale)}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">{t("prize.rebuyAmountLabel")}</dt>
+              <dd className="text-slate-200">{formatChips(history.rebuyAmount, locale)}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">{t("prize.addOnAmountLabel")}</dt>
+              <dd className="text-slate-200">{formatChips(history.addOnAmount, locale)}</dd>
+            </div>
+            <div>
               <dt className="text-slate-500">{t("history.detail.rebuysLabel")}</dt>
               <dd className="text-slate-200">
                 {!history.allowRebuys

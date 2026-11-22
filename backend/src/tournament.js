@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { TournamentClock } from "./tournamentClock.js";
 import { cloneLevels, defaultLevels } from "./levels.js";
-import { DEFAULT_PRIZE_CONFIG, computePrizePool, assertValidPrizeConfig } from "./prizePool.js";
+import { DEFAULT_PRIZE_CONFIG, DEFAULT_ENTRY_FEES, computePrizePool, assertValidPrizeConfig } from "./prizePool.js";
 
 export class Tournament {
   constructor(id, ownerUsername) {
@@ -21,6 +21,9 @@ export class Tournament {
     this.rebuyLimitType = "unlimited";
     this.maxRebuysPerPlayer = null;
     this.allowAddOn = true;
+    this.buyInAmount = DEFAULT_ENTRY_FEES.buyInAmount;
+    this.rebuyAmount = DEFAULT_ENTRY_FEES.rebuyAmount;
+    this.addOnAmount = DEFAULT_ENTRY_FEES.addOnAmount;
     this.prizeConfig = { ...DEFAULT_PRIZE_CONFIG };
     // Runtime audit trail — clock/admin interventions only (buy-ins/rebuys
     // are already captured in each player's totals, so logging them here
@@ -260,11 +263,18 @@ export class Tournament {
       rebuyLimitType: this.rebuyLimitType,
       maxRebuysPerPlayer: this.maxRebuysPerPlayer,
       allowAddOn: this.allowAddOn,
+      buyInAmount: this.buyInAmount,
+      rebuyAmount: this.rebuyAmount,
+      addOnAmount: this.addOnAmount,
       prizeConfig: { ...this.prizeConfig },
       clock: this.clock.getState(),
       players: this.players,
       totals,
-      prize: computePrizePool({ totals, prizeConfig: this.prizeConfig }),
+      prize: computePrizePool({
+        totals,
+        entryFees: { buyInAmount: this.buyInAmount, rebuyAmount: this.rebuyAmount, addOnAmount: this.addOnAmount },
+        prizeConfig: this.prizeConfig,
+      }),
     };
   }
 
@@ -283,6 +293,9 @@ export class Tournament {
       rebuyLimitType: this.rebuyLimitType,
       maxRebuysPerPlayer: this.maxRebuysPerPlayer,
       allowAddOn: this.allowAddOn,
+      buyInAmount: this.buyInAmount,
+      rebuyAmount: this.rebuyAmount,
+      addOnAmount: this.addOnAmount,
       prizeConfig: { ...this.prizeConfig },
       quickPlayerCounter: this._quickPlayerCounter,
       clock: this.clock.toPersistableState(),
@@ -305,6 +318,9 @@ export class Tournament {
     tournament.rebuyLimitType = doc.rebuyLimitType ?? "unlimited";
     tournament.maxRebuysPerPlayer = doc.maxRebuysPerPlayer ?? null;
     tournament.allowAddOn = doc.allowAddOn ?? true;
+    tournament.buyInAmount = doc.buyInAmount ?? DEFAULT_ENTRY_FEES.buyInAmount;
+    tournament.rebuyAmount = doc.rebuyAmount ?? DEFAULT_ENTRY_FEES.rebuyAmount;
+    tournament.addOnAmount = doc.addOnAmount ?? DEFAULT_ENTRY_FEES.addOnAmount;
     tournament.prizeConfig = { ...DEFAULT_PRIZE_CONFIG, ...(doc.prizeConfig ?? {}) };
     tournament._quickPlayerCounter = doc.quickPlayerCounter ?? 0;
     tournament.players = doc.players.map((player) => ({ ...player }));

@@ -12,12 +12,11 @@ import { LanguageToggle } from "../../components/LanguageToggle";
 // existing template" — loading a template just pre-fills this same form.
 const STARTER_LEVELS = [{ smallBlind: 25, bigBlind: 50, ante: 0, durationSeconds: 900, isBreak: false }];
 
-// Mirrors backend/src/prizePool.js's DEFAULT_PRIZE_CONFIG — Setup has no
-// live tournament yet to read defaults from, so a brand-new form seeds here.
+// Mirrors backend/src/prizePool.js's DEFAULT_PRIZE_CONFIG (payout structure
+// only — buy-in/re-buy/add-on amounts are separate core fields, set below
+// alongside startingStack/allowRebuys). Setup has no live tournament yet to
+// read defaults from, so a brand-new form seeds here.
 const DEFAULT_PRIZE_CONFIG = {
-  buyInAmount: 0,
-  rebuyAmount: 0,
-  addOnAmount: 0,
   manualPrizePoolEnabled: false,
   manualPrizePoolAmount: 0,
   itmMode: "percentage",
@@ -44,6 +43,9 @@ export function TournamentSetupPage() {
   const [rebuyLimitType, setRebuyLimitType] = useState("unlimited");
   const [maxRebuysPerPlayer, setMaxRebuysPerPlayer] = useState(2);
   const [allowAddOn, setAllowAddOn] = useState(true);
+  const [buyInAmount, setBuyInAmount] = useState(0);
+  const [rebuyAmount, setRebuyAmount] = useState(0);
+  const [addOnAmount, setAddOnAmount] = useState(0);
   const [prizeConfig, setPrizeConfig] = useState(DEFAULT_PRIZE_CONFIG);
 
   const [templateId, setTemplateId] = useState(initialTemplateId);
@@ -74,6 +76,9 @@ export function TournamentSetupPage() {
         setRebuyLimitType(template.rebuyLimitType);
         setMaxRebuysPerPlayer(template.maxRebuysPerPlayer ?? 2);
         setAllowAddOn(template.allowAddOn);
+        setBuyInAmount(template.buyInAmount ?? 0);
+        setRebuyAmount(template.rebuyAmount ?? 0);
+        setAddOnAmount(template.addOnAmount ?? 0);
         setPrizeConfig({ ...DEFAULT_PRIZE_CONFIG, ...template.prizeConfig });
         setTemplateOwner(template.ownerUsername);
       })
@@ -110,6 +115,9 @@ export function TournamentSetupPage() {
       rebuyLimitType,
       maxRebuysPerPlayer: rebuyLimitType === "limited" ? Number(maxRebuysPerPlayer) : null,
       allowAddOn,
+      buyInAmount: Number(buyInAmount) || 0,
+      rebuyAmount: Number(rebuyAmount) || 0,
+      addOnAmount: Number(addOnAmount) || 0,
       prizeConfig,
     };
   }
@@ -214,6 +222,19 @@ export function TournamentSetupPage() {
                 className="w-28 rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
               />
             </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="buyInAmount" className="whitespace-nowrap text-sm text-slate-400">
+                {t("prize.buyInAmountLabel")}
+              </label>
+              <input
+                id="buyInAmount"
+                type="number"
+                min="0"
+                value={buyInAmount}
+                onChange={(e) => setBuyInAmount(e.target.value)}
+                className="w-28 rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+              />
+            </div>
           </div>
         </div>
 
@@ -270,10 +291,23 @@ export function TournamentSetupPage() {
                   />
                 </div>
               )}
+              <div className="flex items-center gap-2">
+                <label htmlFor="rebuyAmount" className="text-sm text-slate-400">
+                  {t("prize.rebuyAmountLabel")}
+                </label>
+                <input
+                  id="rebuyAmount"
+                  type="number"
+                  min="0"
+                  value={rebuyAmount}
+                  onChange={(e) => setRebuyAmount(e.target.value)}
+                  className="w-20 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100"
+                />
+              </div>
             </div>
           )}
 
-          <label className="flex items-center gap-3">
+          <label className="mb-3 flex items-center gap-3">
             <input
               type="checkbox"
               checked={allowAddOn}
@@ -282,6 +316,22 @@ export function TournamentSetupPage() {
             />
             <span className="text-sm text-slate-200">{t("setup.allowAddOn")}</span>
           </label>
+
+          {allowAddOn && (
+            <div className="ms-8 flex items-center gap-2">
+              <label htmlFor="addOnAmount" className="text-sm text-slate-400">
+                {t("prize.addOnAmountLabel")}
+              </label>
+              <input
+                id="addOnAmount"
+                type="number"
+                min="0"
+                value={addOnAmount}
+                onChange={(e) => setAddOnAmount(e.target.value)}
+                className="w-20 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100"
+              />
+            </div>
+          )}
         </div>
 
         <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">

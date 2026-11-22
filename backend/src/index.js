@@ -35,7 +35,12 @@ import {
 } from "./playerStore.js";
 import { isGoogleAuthConfigured, getGoogleAuthUrl, getGoogleProfile } from "./googleAuth.js";
 import { normalizeLevels, defaultLevels, cloneLevels } from "./levels.js";
-import { DEFAULT_PRIZE_CONFIG, parsePrizeConfigFields, assertValidPrizeConfig } from "./prizePool.js";
+import {
+  DEFAULT_PRIZE_CONFIG,
+  parsePrizeConfigFields,
+  parseEntryFeeFields,
+  assertValidPrizeConfig,
+} from "./prizePool.js";
 import { connectDB } from "./db.js";
 
 const PORT = process.env.PORT || 4000;
@@ -116,10 +121,11 @@ app.get("/auth/google/callback", async (req, res) => {
 });
 
 // Shared by the template and tournament routes below — both accept the same
-// rebuy/add-on rule shape, so the validation only lives in one place.
+// rebuy/add-on rule shape (plus the per-entry dollar amounts that feed the
+// prize pool calculation), so the validation only lives in one place.
 function parseRebuyRules(body) {
   const { allowRebuys, rebuyLimitType, maxRebuysPerPlayer, allowAddOn } = body || {};
-  const rules = {};
+  const rules = { ...parseEntryFeeFields(body) };
   if (allowRebuys !== undefined) rules.allowRebuys = Boolean(allowRebuys);
   if (allowAddOn !== undefined) rules.allowAddOn = Boolean(allowAddOn);
   if (rebuyLimitType !== undefined) {
@@ -158,6 +164,9 @@ function serializeTemplate(t) {
     rebuyLimitType: t.rebuyLimitType,
     maxRebuysPerPlayer: t.maxRebuysPerPlayer,
     allowAddOn: t.allowAddOn,
+    buyInAmount: t.buyInAmount,
+    rebuyAmount: t.rebuyAmount,
+    addOnAmount: t.addOnAmount,
     prizeConfig: t.prizeConfig,
     source: t.source,
     createdAt: t.createdAt,
@@ -288,6 +297,9 @@ app.post("/api/tournaments", requireAuth, async (req, res) => {
       rebuyLimitType: seed.rebuyLimitType ?? "unlimited",
       maxRebuysPerPlayer: seed.maxRebuysPerPlayer ?? null,
       allowAddOn: seed.allowAddOn ?? true,
+      buyInAmount: seed.buyInAmount ?? 0,
+      rebuyAmount: seed.rebuyAmount ?? 0,
+      addOnAmount: seed.addOnAmount ?? 0,
       prizeConfig: seed.prizeConfig,
       source: "quick_launch",
     });
@@ -394,6 +406,9 @@ app.get("/api/history/:id", requireAuth, async (req, res) => {
     rebuyLimitType: history.rebuyLimitType,
     maxRebuysPerPlayer: history.maxRebuysPerPlayer,
     allowAddOn: history.allowAddOn,
+    buyInAmount: history.buyInAmount,
+    rebuyAmount: history.rebuyAmount,
+    addOnAmount: history.addOnAmount,
     prizeConfig: history.prizeConfig,
     finalPrizePool: history.finalPrizePool,
     finalPayouts: history.finalPayouts,
